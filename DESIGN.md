@@ -1,4 +1,4 @@
-# Stage 1 interface
+# Academic workspace interface
 
 The interface is an academic workspace for students and lecturers. Stage 1 lets
 people create an account, sign in, inspect their role and verification status,
@@ -49,3 +49,40 @@ Real-browser checks also exercised registration for both roles, account navigati
 mobile menu expansion, logout, operator CLI approval, verification refresh within
 the existing session, and access-cookie renewal. There was no horizontal overflow
 at the checked widths and no uncaught browser exception in the exercised flow.
+
+## Stage 2 practice surfaces
+
+The existing Editorial greeting direction, Instrument Sans, neutral/sage palette,
+and responsive workspace shell are preserved. No redraw or new visual world is
+introduced. The signature element is a numbered question map: answered questions
+use a muted fill, the current question has an outline, and all states have text or
+accessible labels. Actual server data supplies counts, grades, and timing.
+
+- Library: which private quiz should I write or practise next? A ruled list names
+  each quiz, its draft/publication state, question count, and timer.
+- Editor: what will this question ask, and which answer is correct? A single-column
+  question sequence makes four labeled options and one radio choice explicit.
+- Instructions: what am I about to attempt? Timing, question count, scoring, and
+  resume/review rules appear before the start action.
+- Taking: which question am I answering, and is my answer saved? The question leads,
+  with save status beside it, a countdown above, and a numbered progress rail.
+- Results: how did I do, and what should I revisit? A divided numeric summary leads
+  into question review, correct-answer labels, and optional explanations.
+- History: what happened on each attempt? A semantic table preserves separate
+  attempts with aligned score/duration columns and direct review links.
+
+All screens include pending/error/empty states. Autosave failure keeps the selected
+choice visible, explains it is unsaved, and offers retry/reload. The taking controls
+block submission while a selection is unresolved. Phone layouts stack the progress
+rail and editor columns; history has contained table scrolling. There are no
+fabricated quizzes or metrics in the product.
+
+Stage 2 verification used the real API and an isolated PostgreSQL database. The
+browser flow covered draft editing/removal, publication, offline autosave recovery,
+resumption, grading/review, missed-question drafts, retakes, expiry, and historical
+result preservation. Library, editor, instructions, taking, results, and history
+were captured at 1440px, 768px, and 390px without page overflow or uncaught browser
+exceptions. Final editor and taking inspections reported zero failures/warnings;
+save/progress labels were increased to 13px after the first inspection. Source
+design lint's only warning is the deliberate minutes:seconds clock zero-padding.
+Biology quiz examples exist only in disposable verification fixtures, not the app.

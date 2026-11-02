@@ -34,6 +34,8 @@ model User {
   updatedAt    DateTime      @updatedAt
   verification LecturerVerification?
   sessions     RefreshSession[]
+  quizzes      Quiz[]
+  attempts     Attempt[]
 }
 
 model LecturerVerification {
@@ -70,4 +72,105 @@ model AuditEvent {
   createdAt  DateTime @default(now())
 
   @@index([resourceId, createdAt])
+}
+
+enum QuizMode {
+  ASSESSMENT
+  PRACTICE
+  CHALLENGE
+}
+
+enum QuizStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  EXPIRED
+}
+
+model Quiz {
+  id               String     @id @default(uuid()) @db.Uuid
+  ownerId          String     @db.Uuid
+  mode             QuizMode   @default(PRACTICE)
+  status           QuizStatus @default(DRAFT)
+  title            String     @db.VarChar(150)
+  description      String     @default("") @db.VarChar(2000)
+  timeLimitSeconds Int?
+  revision         Int        @default(0)
+  publishedAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  owner            User       @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  questions        QuizQuestion[]
+  attempts         Attempt[]
+
+  @@index([ownerId, createdAt])
+}
+
+model QuizQuestion {
+  id          String @id @default(uuid()) @db.Uuid
+  quizId      String @db.Uuid
+  position    Int
+  prompt      String @db.VarChar(2000)
+  explanation String @default("") @db.VarChar(2000)
+  quiz        Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options     QuizQuestionOption[]
+  answers     AttemptAnswer[]
+
+  @@unique([id, quizId])
+  @@unique([quizId, position])
+}
+
+model QuizQuestionOption {
+  id         String  @id @default(uuid()) @db.Uuid
+  questionId String  @db.Uuid
+  position   Int
+  text       String  @db.VarChar(500)
+  isCorrect  Boolean
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers    AttemptAnswer[]
+
+  @@unique([id, questionId])
+  @@unique([questionId, position])
+}
+
+model Attempt {
+  id              String        @id @default(uuid()) @db.Uuid
+  quizId          String        @db.Uuid
+  userId          String        @db.Uuid
+  attemptNumber   Int
+  status          AttemptStatus @default(IN_PROGRESS)
+  startedAt       DateTime      @default(now())
+  expiresAt       DateTime?
+  finalizedAt     DateTime?
+  score           Int?
+  totalQuestions  Int
+  durationSeconds Int?
+  quiz            Quiz          @relation(fields: [quizId], references: [id], onDelete: Restrict)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  answers         AttemptAnswer[]
+
+  @@unique([id, quizId])
+  @@unique([quizId, userId, attemptNumber])
+  @@index([userId, startedAt])
+  @@index([status, expiresAt])
+}
+
+model AttemptAnswer {
+  attemptId       String @db.Uuid
+  quizId          String @db.Uuid
+  questionId      String @db.Uuid
+  selectedOptionId String? @db.Uuid
+  revision        Int @default(1)
+  savedAt         DateTime @default(now())
+  attempt         Attempt @relation(fields: [attemptId, quizId], references: [id, quizId], onDelete: Restrict)
+  question        QuizQuestion @relation(fields: [questionId, quizId], references: [id, quizId], onDelete: Restrict)
+  selectedOption  QuizQuestionOption? @relation(fields: [selectedOptionId, questionId], references: [id, questionId], onDelete: Restrict)
+
+  @@id([attemptId, questionId])
+  @@index([questionId, quizId])
+  @@index([selectedOptionId, questionId])
 }

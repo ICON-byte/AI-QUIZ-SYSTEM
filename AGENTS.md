@@ -3,9 +3,9 @@
 ## Scope and architecture
 
 - This is the AI-Powered Online Quiz System, an npm workspaces monorepo.
-- Stage 1 implements foundation and authentication only. Do not begin later stages
-  without explicit user approval. Do not add quizzes, AI, uploads, or challenges
-  as part of authentication work.
+- Stages 1 and 2 are authorized: foundation/authentication and manual personal
+  practice quizzes with a shared engine. Stage 3 and later require explicit approval.
+  Do not add courses, lecturer assessments, AI, uploads, or challenges yet.
 - Frontend: React, Vite, TypeScript, Tailwind 4 (`apps/web`).
 - Backend: Node 24, Express 5, TypeScript, Prisma 7, PostgreSQL (`apps/api`).
 - Keep one API and database. Avoid additional infrastructure without a concrete need.
@@ -47,6 +47,22 @@
   error objects. Use sanitized errors and request IDs.
 - Single-process in-memory rate limits are intentional for Stage 1. Revisit before
   deploying multiple API instances.
+- Quiz inputs can use the scoped 256KB JSON parser; authentication remains at 16KB.
+- Practice endpoints require an active student and ownership. ASSESSMENT/CHALLENGE
+  modes exist in the schema but must remain inaccessible until approved.
+- Draft aggregate saves require a revision. Publishing freezes questions, options,
+  and settings. Preserve the SQL triggers and partial/composite indexes in migrations.
+- Keep authoring, taking, and result DTOs separate. Answer keys/explanations are
+  permitted only for draft authoring or a finalized, authorized result.
+- Quiz advisory transaction locks serialize editing/publication/attempt allocation;
+  attempt locks serialize reading, saving, expiry, and submission. Preserve lock order
+  (quiz before attempt) and use the database clock for deadlines and grading duration.
+- Autosaves use per-answer optimistic revisions and allow an identical lost-response
+  retry. Never overwrite a conflicting tab's answer silently.
+- Finalized attempts/answers are immutable. Retakes create new attempts; retrying
+  incorrect answers creates a new draft with independent question/option IDs.
+- Expiry is checked on every attempt operation, plus a bounded 15-second server sweep.
+  Commit expiry before returning a save rejection; never trust client countdowns.
 
 ## Frontend conventions
 

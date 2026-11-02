@@ -1,6 +1,7 @@
 import { loadConfig } from './config/env.js';
 import { createDatabase } from './infrastructure/database.js';
 import { createApp } from './app.js';
+import { createAttemptEngine } from './modules/attempts/engine.js';
 
 async function main() {
   const config = loadConfig();
@@ -8,11 +9,20 @@ async function main() {
   await db.$connect();
   const { app, ready } = createApp(db, config);
   await ready;
+  const engine = createAttemptEngine(db);
+  let expiring = false;
+  const expiryTimer = setInterval(() => {
+    if (expiring) return;
+    expiring = true;
+    void engine.expire().catch(() => console.error('Attempt expiry sweep failed; it will retry.')).finally(() => { expiring = false; });
+  }, 15_000);
+  expiryTimer.unref();
   const server = app.listen(config.PORT, '127.0.0.1', () => console.log(`API listening on http://127.0.0.1:${config.PORT}`));
   let closing = false;
   function shutdown() {
     if (closing) return;
     closing = true;
+    clearInterval(expiryTimer);
     server.close(() => { void db.$disconnect().then(() => process.exit(0)); });
     setTimeout(() => process.exit(1), 10_000).unref();
   }

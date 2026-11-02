@@ -1,0 +1,66 @@
+import type { Prisma } from '../../generated/prisma/client.js';
+import type { QuizInput } from './validation.js';
+
+export const questionInclude = {
+  orderBy: { position: 'asc' },
+  include: { options: { orderBy: { position: 'asc' } } },
+} as const;
+export const quizInclude = { questions: questionInclude } as const;
+export type FullQuiz = Prisma.QuizGetPayload<{ include: typeof quizInclude }>;
+export type Tx = Prisma.TransactionClient;
+
+export function questionData(questions: QuizInput['questions']) {
+  return questions.map((question, position) => ({
+    position,
+    prompt: question.prompt,
+    explanation: question.explanation,
+    options: {
+      create: question.options.map((text, index) => ({
+        position: index,
+        text,
+        isCorrect: index === question.correctOption,
+      })),
+    },
+  }));
+}
+
+export function quizSummary(
+  quiz: Omit<FullQuiz, 'questions'> & { questions: { id: string }[] },
+) {
+  return {
+    id: quiz.id,
+    title: quiz.title,
+    description: quiz.description,
+    mode: quiz.mode,
+    status: quiz.status,
+    revision: quiz.revision,
+    timeLimitSeconds: quiz.timeLimitSeconds,
+    questionCount: quiz.questions.length,
+    createdAt: quiz.createdAt.toISOString(),
+    publishedAt: quiz.publishedAt?.toISOString() ?? null,
+  };
+}
+
+export function authorQuiz(quiz: FullQuiz) {
+  return {
+    ...quizSummary(quiz),
+    questions: quiz.questions.map((question) => ({
+      prompt: question.prompt,
+      explanation: question.explanation,
+      options: question.options.map((option) => option.text),
+      correctOption: question.options.findIndex((option) => option.isCorrect),
+    })),
+  };
+}
+
+export async function lock(tx: Tx, key: string) {
+  // Transaction-scoped PostgreSQL lock, independent of the configured schema.
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))::text`;
+}
+
+export async function databaseNow(tx: Tx) {
+  const [row] = await tx.$queryRaw<
+    { now: Date }[]
+  >`SELECT clock_timestamp() AS now`;
+  return row!.now;
+}

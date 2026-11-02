@@ -1,9 +1,10 @@
 # AI-Powered Online Quiz System
 
 A React and Express application for academic assessments and personal learning.
-**Stage 1 is implemented:** project foundation, student/lecturer accounts, secure
-sessions, role authorization, and operator-managed lecturer verification.
-Quizzes, courses, AI, uploads, and challenges are not implemented yet.
+**Stages 1 and 2 are implemented:** project foundation, student/lecturer accounts,
+secure sessions, role authorization, operator-managed lecturer verification, and
+manual personal practice quizzes with a reusable attempt engine.
+Courses, lecturer assessments, AI, uploads, and challenges are not implemented yet.
 
 ## Requirements
 
@@ -187,9 +188,120 @@ logout, token tampering, rate limits, and frontend authentication states.
 The development lint toolchain pins `minimatch` to the patched 11.x line through
 an override. Recheck compatibility and advisories when upgrading lint dependencies.
 
+## Personal practice (Stage 2)
+
+After pulling these changes, stop the API, apply the additive migration, and restart:
+
+```powershell
+npm run db:generate
+npm run db:deploy
+npm run dev
+```
+
+No new environment variables or dependencies are required. Existing users and
+authentication tables are preserved. The migration adds quiz/attempt tables and
+PostgreSQL constraints/triggers. Apply it before running the updated API.
+
+Students now have **My practice quizzes** and **Practice history** navigation.
+Lecturers retain their existing workspace; Stage 2 practice routes require a student
+account on both the frontend and API.
+
+### Manually test the workflow
+
+1. Sign in as a student at `http://localhost:5173` and open **My practice quizzes**.
+2. Choose **Create a quiz**. Enter a title, optional description, and optional time
+   limit in minutes (1–180; blank is untimed).
+3. Add questions with four different options and one correct choice. Explanations
+   are optional. You can remove or edit questions before publishing. A quiz supports
+   up to 50 questions. Complete added questions before saving; an empty-question
+   draft is allowed.
+4. Save the draft, return to the library, and reopen it to confirm your work persists.
+5. Choose **Save and publish** and confirm. Published questions and settings cannot
+   be changed. A published quiz is private to its owner.
+6. Read the instructions and select **Start or resume practice**. Choose an answer
+   and wait for **Answer saved**. Move between questions or jump using the numbered
+   question map. You can clear a saved answer.
+7. Leave and reopen the quiz. Starting again resumes the same unfinished attempt
+   with saved selections and the original deadline.
+8. Submit and confirm. Check the percentage, correct/incorrect counts, time taken,
+   correct answers, and explanations. Unanswered questions count as incorrect.
+9. Retake the quiz to create a new attempt. Both results remain in **Practice history**.
+10. Choose **Practise incorrect questions** to create a separate editable draft
+    containing only missed or unanswered questions. Publish it when ready.
+11. For timing, create a one-minute quiz and let it expire. Saved answers are graded
+    automatically, including if the page is closed. Reopen to see the expired result.
+12. To test recovery, temporarily set browser DevTools to offline, select an answer,
+    and confirm **Answer not saved** appears. Restore connectivity and retry saving
+    before navigating/submitting. Do not close the page while a selection is unsaved.
+
+### API and data rules
+
+All endpoints below are under `/api/v1`, use existing cookie authentication, and
+require the student role. Mutations keep the existing origin/CSRF/JSON requirements.
+
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /quizzes?page=1` | Owner's draft/published quizzes, 20 per page |
+| `POST /quizzes` | Create a practice draft with questions |
+| `GET /quizzes/:id` | Private quiz instructions/metadata without answer keys |
+| `GET /quizzes/:id/draft` | Owner's editable draft, including authoring answers |
+| `PUT /quizzes/:id` | Replace draft details/questions with expected `revision` |
+| `POST /quizzes/:id/publish` | Publish with expected `revision`; idempotent once published |
+| `POST /quizzes/:id/attempts` | Start a new attempt or resume the current active one |
+| `GET /attempts/:id` | Resume, check expiry, and return sanitized questions/selections |
+| `PUT /attempts/:id/answers/:questionId` | Save `{selectedOptionId, revision}`; `null` clears |
+| `POST /attempts/:id/submit` | Finalize stored selections exactly once |
+| `GET /attempts/:id/result` | Authorized finalized grade and answer review |
+| `POST /attempts/:id/retry-incorrect` | Create a separate missed-question draft |
+| `GET /practice/history?page=1` | Owner's finalized practice attempts, 20 per page |
+
+Quiz draft input is `{title, description, timeLimitSeconds, questions}`. Each question
+is `{prompt, options: [string,string,string,string], correctOption: 0..3, explanation}`.
+Updates add the expected quiz `revision`. Start/submit/retry mutations take `{}`.
+Draft authoring necessarily includes the answers the owner enters. Once published,
+authoring access is closed; taking/instruction responses never include answer keys.
+Review access is granted only after that attempt has finalized.
+
+The schema adds `Quiz`, `QuizQuestion`, `QuizQuestionOption`, `Attempt`, and
+`AttemptAnswer`. Question-bank models remain deferred. PostgreSQL partial unique
+indexes prevent multiple active attempts and multiple correct options. Composite
+foreign keys prevent selecting another question's option or saving an answer to
+another quiz. SQL triggers freeze published content and finalized attempts/answers.
+Publication verifies four options and exactly one correct answer per question.
+
+The engine is in `apps/api/src/modules/attempts/engine.ts`; mode eligibility is
+centralized and rejects ASSESSMENT and CHALLENGE for now. It shares starting,
+resumption, timing, answer persistence, grading, and idempotent finalization.
+Practice has no lifetime attempt limit, but only one active attempt per user/quiz.
+Concurrent starts return the same active attempt. If an old active attempt has
+expired, the first start returns its finalized result; another explicit start begins
+a retake. Retrying incorrect questions can be repeated to create additional drafts.
+
+Server timing uses PostgreSQL `clock_timestamp()`. The frontend uses a monotonic
+countdown synchronized on each response and checks attempt status every 15 seconds.
+The API checks deadlines under the attempt lock, and a 15-second background sweep
+finalizes expired attempts in batches of 100. Request-time checks still work after
+server restarts or a delayed sweep. Expired duration/finalization uses the deadline,
+not the later time a worker happens to process it. A wrong client clock cannot
+extend the attempt or submit a client-supplied grade.
+
+Quiz revision conflicts and conflicting answer saves return 409. Identical answer
+retries after a lost success response are safe. The frontend retains failed selections
+in memory, blocks navigation/submission controls, and offers retry/reload. Saved
+answers survive reload; unsaved choices do not persist after closing/reloading.
+The browser warns before reload or link navigation with unsaved changes. No quiz
+answers or credentials are written to browser local/session storage.
+
+PostgreSQL integration tests now include practice ownership/validation, question
+editing/deletion, publication immutability, concurrent starts, autosave retries and
+conflicts, save/submit races, grading, duplicate submissions, expiry, result privacy,
+retakes, retry-incorrect drafts, and database constraints. `npm run test:integration`
+runs both Stage 1 and Stage 2 suites in the isolated schema. Frontend tests cover
+the editor, navigation, offline-save feedback/retry, resume, results, and history.
+
 ## Production boundary and next stage
 
-This is a Stage 1 foundation, not a production launch. Email verification, password
+This is a Stage 2 implementation, not a production launch. Email verification, password
 recovery, profile editing, and multi-device session management are not implemented.
 Before launch, add the agreed email/recovery flow, retention cleanup for expired
 session rows, backup/restore procedures, monitoring, and deployment configuration.
@@ -200,7 +312,5 @@ serve `apps/web/dist` with SPA history fallback, and reverse-proxy `/api` to Exp
 on the same origin. Configure TLS, HTTPS `APP_ORIGIN`, production mode, and the exact
 proxy hop count. The API deliberately binds to loopback for this topology.
 
-Stage 2 requires separate approval: manual practice quiz creation and the shared
-quiz engine, including start/resume, autosave, server timing, submission, grading,
-and results. Courses, assessments, question banks, AI, uploads, and challenges follow
-the later approved stages.
+Stage 3 requires separate approval: courses, enrollment, and verified lecturer
+assessments. Question banks, AI, uploads, and challenges follow later approved stages.

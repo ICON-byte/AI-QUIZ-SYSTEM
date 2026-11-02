@@ -40,6 +40,7 @@ export function Workspace() {
       <div className="workspace-label">{user.role === 'LECTURER' ? 'Lecturer workspace' : 'Student workspace'}</div>
       <nav aria-label="Main navigation" onClick={() => setMenuOpen(false)}>
         <NavLink to="/dashboard">Overview <span aria-hidden="true">↗</span></NavLink>
+        {user.role === 'STUDENT' ? <><NavLink to="/practice" end>My practice quizzes</NavLink><NavLink to="/practice/history">Practice history</NavLink></> : null}
         {user.role === 'LECTURER' ? <NavLink to="/verification">Lecturer verification</NavLink> : null}
         <NavLink to="/account">My account</NavLink>
       </nav>

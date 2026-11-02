@@ -27,8 +27,8 @@ export function Dashboard() {
       <section className="panel welcome-panel">
         <div className="section-heading"><h2>{lecturer ? 'Ready for the classroom' : 'Your learning, in one place'}</h2><span className="status neutral">{lecturer ? 'Lecturer' : 'Student'}</span></div>
         <div className="workspace-note"><span className="note-rule" aria-hidden="true" /><p>{lecturer ? 'Good assessment begins with a clear question.' : 'Understanding begins with a little curiosity.'}</p></div>
-        <p className="muted">{lecturer ? 'Your account is set up. Official assessment access depends on lecturer verification.' : 'Your account is set up. Your courses and personal practice will have a home here as they become available.'}</p>
-        <Link className="text-link" to={lecturer ? '/verification' : '/account'}>{lecturer ? 'View verification' : 'View your account'} <span aria-hidden="true">↗</span></Link>
+        <p className="muted">{lecturer ? 'Your account is set up. Official assessment access depends on lecturer verification.' : 'Create your own questions, practise at your own pace, and revisit what you missed.'}</p>
+        <Link className="text-link" to={lecturer ? '/verification' : '/practice'}>{lecturer ? 'View verification' : 'Open personal practice'} <span aria-hidden="true">↗</span></Link>
       </section>
       <section className="panel access-panel">
         <h2>Workspace access</h2>
