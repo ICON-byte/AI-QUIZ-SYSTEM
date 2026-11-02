@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  STUDENT
+  LECTURER
+}
+
+enum AccountStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String        @id @default(uuid()) @db.Uuid
+  email        String        @unique @db.VarChar(254)
+  displayName  String        @db.VarChar(80)
+  passwordHash String
+  role         Role
+  status       AccountStatus @default(ACTIVE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  verification LecturerVerification?
+  sessions     RefreshSession[]
+}
+
+model LecturerVerification {
+  id         String             @id @default(uuid()) @db.Uuid
+  userId     String             @unique @db.Uuid
+  status     VerificationStatus @default(PENDING)
+  reviewedBy String?            @db.VarChar(120)
+  reason     String?            @db.VarChar(500)
+  reviewedAt DateTime?
+  createdAt  DateTime           @default(now())
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshSession {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  familyId   String   @db.Uuid
+  tokenHash  String   @unique @db.Char(64)
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([userId, expiresAt])
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  actor      String   @db.VarChar(120)
+  action     String   @db.VarChar(80)
+  resourceId String   @db.Uuid
+  reason     String   @db.VarChar(500)
+  createdAt  DateTime @default(now())
+
+  @@index([resourceId, createdAt])
+}
