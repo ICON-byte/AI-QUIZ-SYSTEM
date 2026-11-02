@@ -36,6 +36,8 @@ model User {
   sessions     RefreshSession[]
   quizzes      Quiz[]
   attempts     Attempt[]
+  courses      Course[]
+  enrollments  Enrollment[]
 }
 
 model LecturerVerification {
@@ -103,11 +105,18 @@ model Quiz {
   publishedAt      DateTime?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
+  courseId         String?    @db.Uuid
+  opensAt          DateTime?
+  closesAt         DateTime?
+  closedAt         DateTime?
+  maxAttempts      Int        @default(1)
+  course           Course?    @relation(fields: [courseId], references: [id], onDelete: Restrict)
   owner            User       @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   questions        QuizQuestion[]
   attempts         Attempt[]
 
   @@index([ownerId, createdAt])
+  @@index([courseId, status])
 }
 
 model QuizQuestion {
@@ -173,4 +182,42 @@ model AttemptAnswer {
   @@id([attemptId, questionId])
   @@index([questionId, quizId])
   @@index([selectedOptionId, questionId])
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  LEFT
+  REMOVED
+}
+
+model Course {
+  id                 String @id @default(uuid()) @db.Uuid
+  ownerId            String @db.Uuid
+  title              String @db.VarChar(150)
+  code               String @db.VarChar(30)
+  description        String @default("") @db.VarChar(2000)
+  enrollmentCodeHash String? @unique @db.Char(64)
+  archivedAt         DateTime?
+  revision           Int @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  owner              User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  enrollments        Enrollment[]
+  assessments        Quiz[]
+
+  @@unique([ownerId, code])
+  @@index([ownerId, createdAt])
+}
+
+model Enrollment {
+  courseId String @db.Uuid
+  studentId String @db.Uuid
+  status EnrollmentStatus @default(ACTIVE)
+  joinedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  course Course @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  student User @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@id([courseId, studentId])
+  @@index([studentId, status])
 }

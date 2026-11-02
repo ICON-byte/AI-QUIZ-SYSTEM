@@ -9,6 +9,7 @@ import { errorHandler, HttpError } from './middleware/errors.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { authenticate, requireRole, requireVerifiedLecturer } from './modules/auth/authorization.js';
 import { practiceRoutes } from './modules/quizzes/routes.js';
+import { courseRoutes } from './modules/courses/routes.js';
 
 export function createApp(db: Database, config: Config) {
   const app = express();
@@ -33,6 +34,7 @@ export function createApp(db: Database, config: Config) {
     next();
   });
   app.use('/api/v1/quizzes', express.json({ limit: '256kb' }));
+  app.use('/api/v1/courses/:courseId/assessments', express.json({ limit: '256kb' }));
   app.use(express.json({ limit: '16kb' }));
   app.use(cookieParser());
   const auth = authRoutes(db, config);
@@ -46,6 +48,12 @@ export function createApp(db: Database, config: Config) {
   app.use('/api/v1/attempts', authenticated, requireRole('STUDENT'));
   app.use('/api/v1/practice/history', authenticated, requireRole('STUDENT'));
   app.use('/api/v1', practiceRoutes(db));
+  // Mount only course/assessment paths so this router never guards public health/auth routes.
+  const academic = courseRoutes(db, config);
+  app.use('/api/v1', (req, res, next) => {
+    if (/^\/(courses|assessments)(\/|$)/.test(req.path)) return academic(req, res, next);
+    next();
+  });
   app.get('/api/v1/dashboard/student', authenticated, requireRole('STUDENT'), (_req, res) => res.json({ role: 'STUDENT' }));
   app.get('/api/v1/dashboard/lecturer', authenticated, requireRole('LECTURER'), (req, res) => res.json({
     role: 'LECTURER', verificationStatus: req.auth!.user.verification!.status

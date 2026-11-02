@@ -263,6 +263,27 @@ h3 { font-size: 14px; font-weight: 600; }
 .attempt-overview .text-link, .attempt-overview > .field-hint { font-size: 13px; }
 .save-failure { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
 .save-failure .button-group { margin-top: 16px; }
+.course-form { max-width: 720px; }
+.course-tools { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+.enrollment-code { margin-bottom: 24px; }
+.code-value { font-family: ui-monospace, monospace; overflow-wrap: anywhere; font-size: 20px; margin: 12px 0; }
+.quiz-row h3 { font-size: 16px; margin: 12px 0 8px; }
+.assessment-settings { margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.assessment-settings h3 { margin-bottom: 20px; }
+.assessment-attempts { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.assessment-attempts p { font-size: 13px; margin-top: 12px; }
+.report-note { margin-top: 16px; }
+.question-statistics > div { display: flex; gap: 24px; justify-content: space-between; padding: 20px 0; border-top: 1px solid var(--border); }
+.question-statistics p { overflow-wrap: anywhere; }
+.question-statistics .num { white-space: nowrap; font-size: 13px; }
+.course-report-summary dd { font-size: 24px; }
+.assessment-report .result-summary dt,
+.assessment-report .report-note,
+.assessment-report .history-table th { font-size: 13px; }
+@media (max-width: 650px) {
+  .course-report-summary dd { font-size: 20px; }
+  .question-statistics > div { flex-direction: column; gap: 8px; }
+}
 @media (max-width: 1100px) {
   .taking-layout { grid-template-columns: minmax(0, 1fr) 210px; gap: 24px; }
   .result-summary { grid-template-columns: repeat(2, 1fr); }

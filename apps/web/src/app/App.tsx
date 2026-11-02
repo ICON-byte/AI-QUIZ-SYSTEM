@@ -11,6 +11,13 @@ import { QuizInstructions } from '../features/practice/QuizInstructions';
 import { ActiveQuiz } from '../features/practice/ActiveQuiz';
 import { QuizResults } from '../features/practice/QuizResults';
 import { PracticeHistory } from '../features/practice/PracticeHistory';
+import { AcademicArea, LecturerAcademic } from '../features/courses/AcademicArea';
+import { CourseList } from '../features/courses/CourseList';
+import { CourseEditor } from '../features/courses/CourseEditor';
+import { CourseDetails } from '../features/courses/CourseDetails';
+import { CourseRoster } from '../features/courses/CourseRoster';
+import { JoinCourse } from '../features/courses/JoinCourse';
+import { AssessmentReport } from '../features/courses/AssessmentReport';
 
 export function App() {
   return <Routes>
@@ -21,7 +28,23 @@ export function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/account" element={<Account />} />
       <Route path="/verification" element={<Verification />} />
+      <Route element={<AcademicArea />}>
+        <Route path="/courses" element={<CourseList />} />
+        <Route path="/courses/:courseId" element={<CourseDetails />} />
+        <Route element={<LecturerAcademic />}>
+          <Route path="/courses/new" element={<CourseEditor />} />
+          <Route path="/courses/:courseId/edit" element={<CourseEditor />} />
+          <Route path="/courses/:courseId/roster" element={<CourseRoster />} />
+          <Route path="/courses/:courseId/assessments/new" element={<QuizEditor academic />} />
+          <Route path="/courses/:courseId/assessments/:quizId/edit" element={<QuizEditor academic />} />
+          <Route path="/courses/:courseId/assessments/:quizId/report" element={<AssessmentReport />} />
+        </Route>
+      </Route>
       <Route element={<StudentPractice />}>
+        <Route path="/courses/join" element={<JoinCourse />} />
+        <Route path="/assessments/:quizId" element={<QuizInstructions academic />} />
+        <Route path="/attempts/:attemptId" element={<ActiveQuiz academic />} />
+        <Route path="/attempts/:attemptId/result" element={<QuizResults academic />} />
         <Route path="/practice" element={<PracticeList />} />
         <Route path="/practice/new" element={<QuizEditor />} />
         <Route path="/practice/history" element={<PracticeHistory />} />

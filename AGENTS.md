@@ -3,9 +3,9 @@
 ## Scope and architecture
 
 - This is the AI-Powered Online Quiz System, an npm workspaces monorepo.
-- Stages 1 and 2 are authorized: foundation/authentication and manual personal
-  practice quizzes with a shared engine. Stage 3 and later require explicit approval.
-  Do not add courses, lecturer assessments, AI, uploads, or challenges yet.
+- Stages 1–3 are authorized: authentication, manual practice, lecturer courses,
+  enrollment, and official assessments. Stage 4 and later require explicit approval.
+  Do not add AI, document uploads, question banks, or friends challenges yet.
 - Frontend: React, Vite, TypeScript, Tailwind 4 (`apps/web`).
 - Backend: Node 24, Express 5, TypeScript, Prisma 7, PostgreSQL (`apps/api`).
 - Keep one API and database. Avoid additional infrastructure without a concrete need.
@@ -48,21 +48,41 @@
 - Single-process in-memory rate limits are intentional for Stage 1. Revisit before
   deploying multiple API instances.
 - Quiz inputs can use the scoped 256KB JSON parser; authentication remains at 16KB.
-- Practice endpoints require an active student and ownership. ASSESSMENT/CHALLENGE
-  modes exist in the schema but must remain inaccessible until approved.
+- Practice endpoints require an active student and ownership. Assessment attempts
+  require active course enrollment. CHALLENGE remains inaccessible.
 - Draft aggregate saves require a revision. Publishing freezes questions, options,
   and settings. Preserve the SQL triggers and partial/composite indexes in migrations.
-- Keep authoring, taking, and result DTOs separate. Answer keys/explanations are
-  permitted only for draft authoring or a finalized, authorized result.
+- Keep authoring, taking, and result DTOs separate. Practice review requires a final
+  attempt. Assessment review additionally requires scheduled/early/course closure.
+  An assessment's summary score may be visible earlier, but no per-question review.
 - Quiz advisory transaction locks serialize editing/publication/attempt allocation;
   attempt locks serialize reading, saving, expiry, and submission. Preserve lock order
-  (quiz before attempt) and use the database clock for deadlines and grading duration.
+  (course before quiz before attempt) and use the database clock for deadlines and grading duration.
 - Autosaves use per-answer optimistic revisions and allow an identical lost-response
   retry. Never overwrite a conflicting tab's answer silently.
 - Finalized attempts/answers are immutable. Retakes create new attempts; retrying
   incorrect answers creates a new draft with independent question/option IDs.
 - Expiry is checked on every attempt operation, plus a bounded 15-second server sweep.
   Commit expiry before returning a save rejection; never trust client countdowns.
+- Use numeric epoch from PostgreSQL for the database clock. Raw timestamptz decoding
+  in the current driver can shift non-UTC session times; retain timezone regression tests.
+- Only verified lecturers may manage courses/assessments/rosters/reports they own.
+  Enrollment codes are 96-bit random values stored only as SHA-256 hashes; return
+  plaintext only at creation/rotation and never log it. Rotation/revocation/join
+  must use the same course lock and recheck the digest after locking.
+- Enrollment records are retained as ACTIVE/LEFT/REMOVED. Duplicate joins are
+  idempotent. Removed students need lecturer restoration. Block leaving/removal
+  during active attempts, including direct database updates.
+- Assessment questions, schedule and max attempts are immutable after publication.
+  Only a one-way early-close timestamp may change; course archive is permanent.
+  New starts require an open course/assessment and a verified active owning lecturer.
+- Cap assessment deadlines by timer, closing time, early close and course archive.
+  Finalize using that cutoff even if the sweep runs later. Reports include all
+  finalized attempts, not only each student's best result, and retain removed users'
+  historical scores. Student access still requires active enrollment.
+- Share the editor, taking and result components between practice and assessments;
+  do not fork autosave/grading/timing logic. Dates are accepted as ISO offsets,
+  stored as UTC, and shown in the browser's local timezone.
 
 ## Frontend conventions
 

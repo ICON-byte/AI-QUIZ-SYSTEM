@@ -86,3 +86,40 @@ exceptions. Final editor and taking inspections reported zero failures/warnings;
 save/progress labels were increased to 13px after the first inspection. Source
 design lint's only warning is the deliberate minutes:seconds clock zero-padding.
 Biology quiz examples exist only in disposable verification fixtures, not the app.
+
+## Stage 3 academic surfaces
+
+The existing Editorial greeting direction, sage/neutral palette, Instrument Sans,
+and responsive shell are retained. Course codes identify the academic context;
+enrollment codes appear only when a lecturer creates or rotates them. There are
+no invented enrollments, scores, performance charts or decorative metrics.
+
+- My courses: which class do I need? Course code/title, archive state and one
+  create/join action lead to the course's actual assessments.
+- Course details: what is available for this class? Assessment rows explicitly
+  distinguish draft, scheduled, open and closed states. Lecturer tools expose
+  enrollment, roster and lifecycle controls with confirmations.
+- Roster: who has access? Student name/email, enrollment state and remove/restore
+  actions form a semantic table with contained phone scrolling.
+- Assessment editor: when and how may students participate? Schedule and attempt
+  fields extend the existing question editor; dates use the browser timezone.
+- Student instructions/taking/results: the same Stage 2 components use assessment
+  context, effective deadlines and prior-attempt links. A submitted score precedes
+  the clearly stated review-release notice. Answer review appears only after closure.
+- Lecturer report: how did this assessment go? Plain labeled statistics and
+  aligned score/timestamp rows explain results without unnecessary charts.
+
+The screenshot fixtures use two independent browser profiles for lecturer and
+student. Sample biology content belongs only to disposable verification data.
+
+Stage 3 browser verification covered lecturer approval, course creation/editing,
+student enrollment, official publication, shared answer saving/resumption,
+submission with withheld review, roster/report views, early closure and released
+review, enrollment-code rotation, removal/restoration and archive. All captured
+screens were checked at 1440px, 768px and 390px without page overflow or uncaught
+exceptions. Course and report browser inspections had no failures. The short
+course's full-height workspace frame intentionally retains empty space rather
+than inventing assessments; this accounts for the inspector's whitespace warnings.
+Report labels were increased to 13px after its first inspection.
+The final report inspection passed with zero failures and zero warnings at all
+three widths; report/roster tables keep horizontal scrolling inside their frame.

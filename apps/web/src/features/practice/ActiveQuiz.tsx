@@ -10,10 +10,11 @@ import type { QuizAttempt, SavedAnswer } from './types';
 type PendingAnswer = SavedAnswer & { error: Error | null };
 type TimedAttempt = QuizAttempt & { receivedAt: number };
 
-export function ActiveQuiz() {
+export function ActiveQuiz({ academic = false }: { academic?: boolean }) {
   const { attemptId } = useParams();
   const client = useQueryClient();
   const navigate = useNavigate();
+  const attemptPath = academic ? '/attempts' : '/practice/attempts';
   const [index, setIndex] = useState(0);
   const [pendingAnswer, setPendingAnswer] = useState<PendingAnswer | null>(
     null,
@@ -117,7 +118,7 @@ export function ActiveQuiz() {
         body: '{}',
       });
       await client.invalidateQueries({ queryKey: ['practice', 'history'] });
-      navigate(`/practice/attempts/${attemptId}/result`, { replace: true });
+      navigate(`${attemptPath}/${attemptId}/result`, { replace: true });
     } catch (error) {
       setError(safeError(error));
     } finally {
@@ -136,7 +137,7 @@ export function ActiveQuiz() {
       />
     );
   if (attempt.status !== 'IN_PROGRESS')
-    return <Navigate to={`/practice/attempts/${attemptId}/result`} replace />;
+    return <Navigate to={`${attemptPath}/${attemptId}/result`} replace />;
   const currentIndex = Math.min(index, attempt.questions.length - 1);
   const question = attempt.questions[currentIndex]!;
   const saved = attempt.answers.find(
@@ -156,7 +157,8 @@ export function ActiveQuiz() {
       <div className="practice-heading attempt-heading">
         <div>
           <p className="context-label">
-            Personal practice / Attempt {attempt.attemptNumber}
+            {academic ? 'Official assessment' : 'Personal practice'} / Attempt{' '}
+            {attempt.attemptNumber}
           </p>
           <h1>{attempt.title}</h1>
           <p className="muted">
@@ -347,7 +349,10 @@ export function ActiveQuiz() {
               {submitting ? 'Submitting…' : 'Submit attempt'}
             </button>
           )}
-          <Link className="text-link" to="/practice">
+          <Link
+            className="text-link"
+            to={academic ? `/courses/${attempt.courseId}` : '/practice'}
+          >
             Leave and resume later
           </Link>
           {error ? <PracticeError error={error} /> : null}

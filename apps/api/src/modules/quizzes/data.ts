@@ -38,6 +38,11 @@ export function quizSummary(
     questionCount: quiz.questions.length,
     createdAt: quiz.createdAt.toISOString(),
     publishedAt: quiz.publishedAt?.toISOString() ?? null,
+    courseId: quiz.courseId,
+    opensAt: quiz.opensAt?.toISOString() ?? null,
+    closesAt: quiz.closesAt?.toISOString() ?? null,
+    closedAt: quiz.closedAt?.toISOString() ?? null,
+    maxAttempts: quiz.maxAttempts,
   };
 }
 
@@ -60,7 +65,8 @@ export async function lock(tx: Tx, key: string) {
 
 export async function databaseNow(tx: Tx) {
   const [row] = await tx.$queryRaw<
-    { now: Date }[]
-  >`SELECT clock_timestamp() AS now`;
-  return row!.now;
+    { milliseconds: string }[]
+  >`SELECT floor(extract(epoch FROM clock_timestamp()) * 1000)::text AS milliseconds`;
+  // Numeric epoch avoids driver timezone conversion of raw timestamptz values.
+  return new Date(Number(row!.milliseconds));
 }
