@@ -204,3 +204,29 @@ The final AI review inspector measured zero failures and zero warnings at all th
 widths. Screenshots were visually checked for form labels, readable privacy text,
 question controls and phone wrapping. Source design lint has no failures; its only
 warning remains the existing countdown's deliberate zero-padding.
+
+
+## Stage 6: asynchronous friends challenges
+
+The existing Editorial greeting direction, Instrument Sans, sage/neutral surfaces
+and form controls are preserved. Created/Joined/History are simple links; challenge
+lists show real question counts, availability, timers and personal attempt state.
+The shared editor retains manual/bank/AI review controls and adds an optional local
+closing time. Publishing and closure explain their permanence before confirmation.
+
+Joining explains display-name/score/time visibility and requires an explicit action.
+Invitation fragments survive safe login/registration return. Creator management
+shows actual joined/started/finalized/in-progress counts and reveals codes only on
+request. No fabricated statistics, trophies or global competition UI is introduced.
+The existing taking screen and save states are reused. Results withhold answer
+review until closure and offer leaderboard navigation instead of retakes.
+
+Rankings use a semantic table with millisecond times, shared competition ranks and
+a viewer marker. Phone tables scroll inside their own frame, not the page. Empty,
+locked, connection-error and finalizing states are explicit. New UI remains keyboard
+accessible and uses the existing visible focus styles without extra animation.
+
+Mocked Chromium workflows verified challenge authoring, invitations, explicit joining,
+resumption, held answer review, manual/scheduled closure and private leaderboards.
+Desktop (1440px), tablet (768px) and phone (390px) captures were checked; the
+responsive inspection found no page-level horizontal overflow.

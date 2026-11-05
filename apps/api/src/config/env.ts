@@ -11,6 +11,7 @@ const schema = z.object({
   SESSION_DAYS: z.coerce.number().int().min(1).max(30).default(7),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(3).default(0),
+  CHALLENGE_INVITE_KEY: z.string().trim().regex(/^(?:[a-fA-F0-9]{64})?$/).default(''),
   GEMINI_API_KEY: z.string().trim().default(''),
   GEMINI_MODEL: z.string().trim().max(120).regex(/^[a-zA-Z0-9._-]*$/).default(''),
   AI_DAILY_USER_LIMIT: z.coerce.number().int().min(1).max(100).default(5),
@@ -23,6 +24,7 @@ const schema = z.object({
   AI_DOCUMENT_MAX_PAGES: z.coerce.number().int().min(1).max(200).default(100),
   AI_EXTRACTION_TIMEOUT_SECONDS: z.coerce.number().int().min(1).max(30).default(10)
 }).superRefine((value, ctx) => {
+  if (value.CHALLENGE_INVITE_KEY && value.CHALLENGE_INVITE_KEY === value.JWT_SECRET) ctx.addIssue({code:'custom',path:['CHALLENGE_INVITE_KEY'],message:'Use a dedicated encryption key'});
   const origin = new URL(value.APP_ORIGIN);
   if (origin.origin !== value.APP_ORIGIN) {
     ctx.addIssue({ code: 'custom', path: ['APP_ORIGIN'], message: 'Use an origin without a path or trailing slash' });

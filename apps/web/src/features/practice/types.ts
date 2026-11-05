@@ -2,7 +2,7 @@ export interface QuizSummary {
   id: string;
   title: string;
   description: string;
-  mode: 'PRACTICE' | 'ASSESSMENT';
+  mode: 'PRACTICE' | 'ASSESSMENT' | 'CHALLENGE';
   courseId?: string | null;
   opensAt?: string | null;
   closesAt?: string | null;
@@ -35,7 +35,7 @@ export interface SavedAnswer {
   revision: number;
 }
 export interface QuizAttempt {
-  mode?: 'PRACTICE' | 'ASSESSMENT';
+  mode?: 'PRACTICE' | 'ASSESSMENT' | 'CHALLENGE';
   courseId?: string | null;
   id: string;
   quizId: string;
@@ -49,7 +49,7 @@ export interface QuizAttempt {
   answers: SavedAnswer[];
 }
 export interface QuizResult {
-  mode?: 'PRACTICE' | 'ASSESSMENT';
+  mode?: 'PRACTICE' | 'ASSESSMENT' | 'CHALLENGE';
   courseId?: string | null;
   reviewAvailable?: boolean;
   reviewReleaseAt?: string | null;

@@ -6,7 +6,15 @@ import { PracticeError } from './PracticeUi';
 import { duration, safeError } from './format';
 import type { QuizResult, QuizSummary } from './types';
 
-export function QuizResults({ academic = false }: { academic?: boolean }) {
+export function QuizResults({
+  academic: legacyAcademic = false,
+  mode,
+}: {
+  academic?: boolean;
+  mode?: QuizResult['mode'];
+}) {
+  const academic = mode ? mode === 'ASSESSMENT' : legacyAcademic;
+  const challenge = mode === 'CHALLENGE';
   const { attemptId } = useParams();
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -16,7 +24,7 @@ export function QuizResults({ academic = false }: { academic?: boolean }) {
     queryKey: ['practice', 'result', attemptId],
     queryFn: () => api<QuizResult>(`/attempts/${attemptId}/result`),
     retry: false,
-    refetchInterval: academic ? 15000 : false,
+    refetchInterval: academic || challenge ? 15000 : false,
   });
   async function retryIncorrect() {
     setPending(true);
@@ -45,7 +53,7 @@ export function QuizResults({ academic = false }: { academic?: boolean }) {
           }}
         />
         <Link
-          to={`${academic ? '/attempts' : '/practice/attempts'}/${attemptId}`}
+          to={`${challenge ? '/challenges/attempts' : academic ? '/attempts' : '/practice/attempts'}/${attemptId}`}
         >
           Return to attempt
         </Link>
@@ -57,8 +65,20 @@ export function QuizResults({ academic = false }: { academic?: boolean }) {
       <div className="practice-heading">
         <div>
           <p className="context-label">
-            <Link to={academic ? '/courses' : '/practice/history'}>
-              {academic ? 'My courses' : 'Practice history'}
+            <Link
+              to={
+                challenge
+                  ? '/challenges/history'
+                  : academic
+                    ? '/courses'
+                    : '/practice/history'
+              }
+            >
+              {challenge
+                ? 'Challenge history'
+                : academic
+                  ? 'My courses'
+                  : 'Practice history'}
             </Link>{' '}
             / Attempt {result.attemptNumber}
           </p>
@@ -66,7 +86,11 @@ export function QuizResults({ academic = false }: { academic?: boolean }) {
           <p className="muted">
             {result.status === 'EXPIRED'
               ? 'Time ended. Your saved answers have been graded.'
-              : academic ? 'Assessment submitted. Your score is recorded.' : 'Practice complete. Take a moment to review.'}
+              : challenge
+                ? 'Challenge submitted. Your score is recorded.'
+                : academic
+                  ? 'Assessment submitted. Your score is recorded.'
+                  : 'Practice complete. Take a moment to review.'}
           </p>
         </div>
         <span className="status neutral">Results</span>
@@ -93,7 +117,17 @@ export function QuizResults({ academic = false }: { academic?: boolean }) {
         </div>
       </dl>
       <div className="result-actions">
-        {academic ? (
+        {challenge ? (
+          <>
+            <Link
+              className="button primary"
+              to={`/challenges/${result.quizId}/leaderboard`}
+            >
+              View leaderboard
+            </Link>
+            <Link to={`/challenges/${result.quizId}`}>Challenge details</Link>
+          </>
+        ) : academic ? (
           <>
             <Link
               className="button secondary"
@@ -127,7 +161,7 @@ export function QuizResults({ academic = false }: { academic?: boolean }) {
           <h2>Answer review opens after closure</h2>
           <p className="muted">
             Your score is final. Correct answers and explanations remain private
-            until the assessment closes
+            until the {challenge ? 'challenge' : 'assessment'} closes
             {result.reviewReleaseAt
               ? ` (${new Date(result.reviewReleaseAt).toLocaleString()})`
               : ''}

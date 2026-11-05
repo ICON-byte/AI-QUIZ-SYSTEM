@@ -3,10 +3,10 @@
 ## Scope and architecture
 
 - This is the AI-Powered Online Quiz System, an npm workspaces monorepo.
-- Stages 1–5 are authorized: authentication, manual practice, lecturer courses,
+- Stages 1–6 are authorized: authentication, manual practice, lecturer courses,
   enrollment, official assessments, private question banks, CSV import and AI generation
-  from topics/reviewed PDF, DOCX and TXT material. Stage 6 requires explicit approval.
-  Do not add friends challenges, public banks, OCR or unrelated features.
+  from topics/reviewed PDF, DOCX and TXT material. Stage 7 requires explicit approval.
+  Stage 6 adds asynchronous student challenges and private leaderboards. Do not add live multiplayer, chat, tournaments, payments, public banks, OCR or unrelated features.
 - Frontend: React, Vite, TypeScript, Tailwind 4 (`apps/web`).
 - Backend: Node 24, Express 5, TypeScript, Prisma 7, PostgreSQL (`apps/api`).
 - Keep one API and database. Avoid additional infrastructure without a concrete need.
@@ -50,7 +50,7 @@
   deploying multiple API instances.
 - Quiz inputs can use the scoped 256KB JSON parser; authentication remains at 16KB.
 - Practice endpoints require an active student and ownership. Assessment attempts
-  require active course enrollment. CHALLENGE remains inaccessible.
+  require active course enrollment. Challenge attempts require explicit membership, exclude the creator, and allow one lifetime attempt.
 - Draft aggregate saves require a revision. Publishing freezes questions, options,
   and settings. Preserve the SQL triggers and partial/composite indexes in migrations.
 - Keep authoring, taking, and result DTOs separate. Practice review requires a final
@@ -182,3 +182,34 @@
   Settings summaries expire after 24h and never contain document text/filenames;
   source input still clears on all terminal transitions. Do not make live Gemini
   requests during tests or debugging without explicit user approval.
+
+
+## Challenge rules (Stage 6)
+
+- Challenges use Quiz.mode CHALLENGE, immutable QuizQuestion snapshots, Challenge
+  metadata, and retained ChallengeParticipant membership. No separate engine or
+  leaderboard table. No public global ranks, multiplayer or social graph.
+- Students create/join; creators cannot join or start ranked attempts. Joining
+  does not start timing. Require membership for every attempt read/write/result.
+  Return the same attempt on repeated starts, including a finalized attempt.
+- Database guards require challenge attemptNumber=1; the existing unique
+  (quizId,userId,attemptNumber) enforces the lifetime limit. Keep identity immutable.
+- Use the quiz advisory lock for publication, join, start, save, submit and close;
+  preserve course -> quiz -> attempt lock order, including SQL answer guards.
+- Challenge.closesAt is optional and freezes at publication. closedAt is permanent.
+  Effective deadlines are the earliest timer, schedule and manual cutoff. Grade
+  saved answers at that cutoff even when finalization runs later. Closing requires
+  no scheduler: request checks and the existing 15-second sweep enforce it.
+- Finalization per challenge request is bounded to 100; the sweep handles remaining
+  work. Leaderboards report updating and withhold rows while due attempts remain.
+- Scores appear at submission; answer review requires a final own attempt and
+  challenge closure. Author answer keys remain creator-only. No retake/retry-incorrect
+  for challenges. Creator statistics never disclose individual answer selections.
+- Rank finalized scores in PostgreSQL before pagination by score DESC and numeric
+  timestamp duration in milliseconds ASC. RANK() ties use 1,1,3; deterministic row
+  ordering must not become a rank tiebreaker. Never expose account IDs or emails.
+- Invitations use 96-bit random codes, SHA-256 lookup hashes, and quiz-bound AES-GCM
+  encryption with dedicated CHALLENGE_INVITE_KEY. Never log codes or return them in
+  general DTOs. Only creators retrieve invitation plaintext. Keep the key stable.
+- Invitation links put codes in URL fragments. Post-auth returns allow only the
+  exact internal invitation route; enrollment always requires explicit POST.

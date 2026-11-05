@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router';
+import { Link, NavLink, Navigate, Outlet, useNavigate, useLocation } from 'react-router';
+import { invitationReturn } from '../features/auth/return';
 import { Brand } from '../components/Brand';
 import { Feedback, Loading } from '../components/Feedback';
 import { api } from '../lib/api';
 import { sessionKey, useSession } from '../features/auth/session';
 
 export function Workspace() {
+  const location=useLocation();
   const session = useSession();
   const client = useQueryClient();
   const navigate = useNavigate();
@@ -16,7 +18,7 @@ export function Workspace() {
 
   if (session.isPending) return <Loading />;
   if (session.error) return <main className="standalone"><Feedback message={session.error.message} retry={() => { void session.refetch(); }} /></main>;
-  if (!session.data) return <Navigate to="/login" replace />;
+  if (!session.data) return <Navigate to="/login" replace state={{returnTo:invitationReturn(location.pathname+location.hash)}} />;
   const user = session.data;
 
   async function logout() {
@@ -43,7 +45,7 @@ export function Workspace() {
         <NavLink to="/courses">My courses</NavLink>
         <NavLink to="/banks">Question banks</NavLink>
         <NavLink to="/ai">Generate questions</NavLink>
-        {user.role === 'STUDENT' ? <><NavLink to="/practice" end>My practice quizzes</NavLink><NavLink to="/practice/history">Practice history</NavLink></> : null}
+        {user.role === 'STUDENT' ? <><NavLink to="/practice" end>My practice quizzes</NavLink><NavLink to="/practice/history">Practice history</NavLink><NavLink to="/challenges" end>Challenges</NavLink><NavLink to="/challenges/history">Challenge history</NavLink></> : null}
         {user.role === 'LECTURER' ? <NavLink to="/verification">Lecturer verification</NavLink> : null}
         <NavLink to="/account">My account</NavLink>
       </nav>

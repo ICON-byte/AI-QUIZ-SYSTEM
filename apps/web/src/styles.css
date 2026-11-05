@@ -373,3 +373,6 @@ h3 { font-size: 14px; font-weight: 600; }
 .ai-job-status p { margin: 0 0 .5rem; overflow-wrap: anywhere; }
 .ai-job-status li { overflow-wrap: anywhere; }
 .ai-activity { display: inline-block; width: .65rem; height: .65rem; margin-right: .5rem; border-radius: 50%; background: var(--accent); }
+
+.challenge-leaderboard .history-table td:first-child { width: auto; }
+.challenge-leaderboard .history-table td:nth-child(n+3), .challenge-leaderboard .history-table th:nth-child(n+3) { text-align: right; white-space: nowrap; }

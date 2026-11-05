@@ -5,7 +5,10 @@ export const questionInclude = {
   orderBy: { position: 'asc' },
   include: { options: { orderBy: { position: 'asc' } } },
 } as const;
-export const quizInclude = { questions: questionInclude } as const;
+export const quizInclude = {
+  questions: questionInclude,
+  challenge: true,
+} as const;
 export type FullQuiz = Prisma.QuizGetPayload<{ include: typeof quizInclude }>;
 export type Tx = Prisma.TransactionClient;
 
@@ -25,7 +28,10 @@ export function questionData(questions: QuizInput['questions']) {
 }
 
 export function quizSummary(
-  quiz: Omit<FullQuiz, 'questions'> & { questions: { id: string }[] },
+  quiz: Omit<FullQuiz, 'questions' | 'challenge'> & {
+    questions: { id: string }[];
+    challenge?: FullQuiz['challenge'];
+  },
 ) {
   return {
     id: quiz.id,
@@ -40,8 +46,16 @@ export function quizSummary(
     publishedAt: quiz.publishedAt?.toISOString() ?? null,
     courseId: quiz.courseId,
     opensAt: quiz.opensAt?.toISOString() ?? null,
-    closesAt: quiz.closesAt?.toISOString() ?? null,
-    closedAt: quiz.closedAt?.toISOString() ?? null,
+    closesAt:
+      (quiz.mode === 'CHALLENGE'
+        ? quiz.challenge?.closesAt
+        : quiz.closesAt
+      )?.toISOString() ?? null,
+    closedAt:
+      (quiz.mode === 'CHALLENGE'
+        ? quiz.challenge?.closedAt
+        : quiz.closedAt
+      )?.toISOString() ?? null,
     maxAttempts: quiz.maxAttempts,
   };
 }
@@ -60,7 +74,13 @@ export function authorQuiz(quiz: FullQuiz) {
 
 export async function lock(tx: Tx, key: string) {
   // Transaction-scoped PostgreSQL lock, independent of the configured schema.
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))::text`;
+  // PostgreSQL UUIDs are case-insensitive; textual lock keys must identify the
+  // same row even when a caller sends an uppercase UUID.
+  const canonical = key.replace(
+    /[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i,
+    (id) => id.toLowerCase(),
+  );
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${canonical}, 0))::text`;
 }
 
 export async function databaseNow(tx: Tx) {

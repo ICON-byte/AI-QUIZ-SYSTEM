@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router';
+import {ChallengeList,ChallengeJoin,ChallengeManage,ChallengeLeaderboard} from '../features/challenges/Challenges';
 import { AuthPage } from '../features/auth/AuthPage';
 import { Account } from '../features/account/Account';
 import { Verification } from '../features/account/Verification';
@@ -55,6 +56,16 @@ export function App() {
         </Route>
       </Route>
       <Route element={<StudentPractice />}>
+        <Route path="/challenges" element={<ChallengeList />} />
+        <Route path="/challenges/history" element={<ChallengeList history />} />
+        <Route path="/challenges/join" element={<ChallengeJoin />} />
+        <Route path="/challenges/new" element={<QuizEditor mode="CHALLENGE" />} />
+        <Route path="/challenges/:quizId/edit" element={<QuizEditor mode="CHALLENGE" />} />
+        <Route path="/challenges/:quizId/manage" element={<ChallengeManage />} />
+        <Route path="/challenges/:quizId/leaderboard" element={<ChallengeLeaderboard />} />
+        <Route path="/challenges/:quizId" element={<QuizInstructions mode="CHALLENGE" />} />
+        <Route path="/challenges/attempts/:attemptId" element={<ActiveQuiz mode="CHALLENGE" />} />
+        <Route path="/challenges/attempts/:attemptId/result" element={<QuizResults mode="CHALLENGE" />} />
         <Route path="/courses/join" element={<JoinCourse />} />
         <Route path="/assessments/:quizId" element={<QuizInstructions academic />} />
         <Route path="/attempts/:attemptId" element={<ActiveQuiz academic />} />

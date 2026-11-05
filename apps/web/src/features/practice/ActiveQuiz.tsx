@@ -10,11 +10,23 @@ import type { QuizAttempt, SavedAnswer } from './types';
 type PendingAnswer = SavedAnswer & { error: Error | null };
 type TimedAttempt = QuizAttempt & { receivedAt: number };
 
-export function ActiveQuiz({ academic = false }: { academic?: boolean }) {
+export function ActiveQuiz({
+  academic: legacyAcademic = false,
+  mode,
+}: {
+  academic?: boolean;
+  mode?: QuizAttempt['mode'];
+}) {
+  const academic = mode ? mode === 'ASSESSMENT' : legacyAcademic;
+  const challenge = mode === 'CHALLENGE';
   const { attemptId } = useParams();
   const client = useQueryClient();
   const navigate = useNavigate();
-  const attemptPath = academic ? '/attempts' : '/practice/attempts';
+  const attemptPath = challenge
+    ? '/challenges/attempts'
+    : academic
+      ? '/attempts'
+      : '/practice/attempts';
   const [index, setIndex] = useState(0);
   const [pendingAnswer, setPendingAnswer] = useState<PendingAnswer | null>(
     null,
@@ -157,8 +169,12 @@ export function ActiveQuiz({ academic = false }: { academic?: boolean }) {
       <div className="practice-heading attempt-heading">
         <div>
           <p className="context-label">
-            {academic ? 'Official assessment' : 'Personal practice'} / Attempt{' '}
-            {attempt.attemptNumber}
+            {challenge
+              ? 'Friends challenge'
+              : academic
+                ? 'Official assessment'
+                : 'Personal practice'}{' '}
+            / Attempt {attempt.attemptNumber}
           </p>
           <h1>{attempt.title}</h1>
           <p className="muted">
@@ -351,7 +367,13 @@ export function ActiveQuiz({ academic = false }: { academic?: boolean }) {
           )}
           <Link
             className="text-link"
-            to={academic ? `/courses/${attempt.courseId}` : '/practice'}
+            to={
+              challenge
+                ? `/challenges/${attempt.quizId}`
+                : academic
+                  ? `/courses/${attempt.courseId}`
+                  : '/practice'
+            }
           >
             Leave and resume later
           </Link>

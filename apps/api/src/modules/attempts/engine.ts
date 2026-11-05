@@ -10,6 +10,7 @@ import {
   type Tx,
 } from '../quizzes/data.js';
 import { quizMissing } from '../quizzes/service.js';
+import { challengeCutoff } from '../challenges/access.js';
 import { requireEnrollment } from '../courses/access.js';
 
 const attemptInclude = {
@@ -30,6 +31,20 @@ async function assertEligible(
   if (quiz.status !== 'PUBLISHED') throw quizMissing();
   if (quiz.mode === 'PRACTICE') {
     if (quiz.ownerId !== userId) throw quizMissing();
+    return;
+  }
+  if (quiz.mode === 'CHALLENGE') {
+    if (
+      !quiz.challenge ||
+      quiz.ownerId === userId ||
+      !(await tx.challengeParticipant.findUnique({
+        where: { quizId_studentId: { quizId: quiz.id, studentId: userId } },
+      }))
+    )
+      throw quizMissing();
+    const cutoff = challengeCutoff(quiz.challenge);
+    if (starting && cutoff && cutoff <= (await databaseNow(tx)))
+      throw new HttpError(403, 'CHALLENGE_CLOSED', 'This challenge is closed.');
     return;
   }
   if (quiz.mode !== 'ASSESSMENT' || !quiz.course) throw quizMissing();
@@ -59,6 +74,8 @@ async function assertEligible(
 
 function effectiveDeadline(attempt: FullAttempt) {
   const deadlines = [attempt.expiresAt];
+  if (attempt.quiz.mode === 'CHALLENGE')
+    deadlines.push(challengeCutoff(attempt.quiz.challenge));
   if (attempt.quiz.mode === 'ASSESSMENT')
     deadlines.push(
       attempt.quiz.closesAt,
@@ -174,7 +191,13 @@ export function createAttemptEngine(db: Database) {
         if (!quiz) throw quizMissing();
         await assertEligible(tx, quiz, userId);
         const active = await tx.attempt.findFirst({
-          where: { quizId, userId, status: 'IN_PROGRESS' },
+          where: {
+            quizId,
+            userId,
+            ...(quiz.mode === 'CHALLENGE'
+              ? {}
+              : { status: 'IN_PROGRESS' as const }),
+          },
         });
         if (active) {
           const attempt = await ownedAttempt(tx, active.id, userId);
@@ -201,12 +224,15 @@ export function createAttemptEngine(db: Database) {
           quiz.timeLimitSeconds === null
             ? null
             : new Date(now.getTime() + quiz.timeLimitSeconds * 1000);
+        const scheduledClose =
+          quiz.mode === 'CHALLENGE' ? quiz.challenge?.closesAt : quiz.closesAt;
         const deadline =
-          quiz.mode === 'ASSESSMENT' && quiz.closesAt
+          (quiz.mode === 'ASSESSMENT' || quiz.mode === 'CHALLENGE') &&
+          scheduledClose
             ? new Date(
                 Math.min(
                   timerDeadline?.getTime() ?? Infinity,
-                  quiz.closesAt.getTime(),
+                  scheduledClose.getTime(),
                 ),
               )
             : timerDeadline;
@@ -348,6 +374,9 @@ export function createAttemptEngine(db: Database) {
         );
         const reviewAvailable =
           attempt.quiz.mode === 'PRACTICE' ||
+          (attempt.quiz.mode === 'CHALLENGE' &&
+            !!challengeCutoff(attempt.quiz.challenge) &&
+            challengeCutoff(attempt.quiz.challenge)! <= now) ||
           !!attempt.quiz.closedAt ||
           !!attempt.quiz.course?.archivedAt ||
           !!(attempt.quiz.closesAt && attempt.quiz.closesAt <= now);
@@ -355,7 +384,11 @@ export function createAttemptEngine(db: Database) {
           mode: attempt.quiz.mode,
           courseId: attempt.quiz.courseId,
           reviewAvailable,
-          reviewReleaseAt: attempt.quiz.closesAt?.toISOString() ?? null,
+          reviewReleaseAt:
+            (attempt.quiz.mode === 'CHALLENGE'
+              ? challengeCutoff(attempt.quiz.challenge)
+              : attempt.quiz.closesAt
+            )?.toISOString() ?? null,
           id: attempt.id,
           quizId: attempt.quizId,
           title: attempt.quiz.title,
@@ -472,12 +505,20 @@ export function createAttemptEngine(db: Database) {
       });
       return quizSummary(quiz);
     },
-    async expire(userId?: string, quizId?: string) {
+    async expire(userId?: string, quizId?: string, drain = true) {
       const now = await databaseNow(db);
       const candidates = await db.attempt.findMany({
         where: {
           status: 'IN_PROGRESS',
           OR: [
+            {
+              quiz: {
+                mode: 'CHALLENGE',
+                challenge: {
+                  OR: [{ closedAt: { lte: now } }, { closesAt: { lte: now } }],
+                },
+              },
+            },
             { expiresAt: { lte: now } },
             {
               quiz: {
@@ -492,7 +533,7 @@ export function createAttemptEngine(db: Database) {
           ],
           ...(userId ? { userId } : {}),
           ...(quizId ? { quizId } : {}),
-          quiz: { mode: { in: ['PRACTICE', 'ASSESSMENT'] } },
+          quiz: { mode: { in: ['PRACTICE', 'ASSESSMENT', 'CHALLENGE'] } },
         },
         select: { id: true },
         take: 100,
@@ -515,7 +556,7 @@ export function createAttemptEngine(db: Database) {
           if (attempt) await finalize(tx, attempt, await databaseNow(tx));
         });
       }
-      if (quizId && candidates.length === 100)
+      if (drain && quizId && candidates.length === 100)
         await this.expire(userId, quizId);
     },
   };

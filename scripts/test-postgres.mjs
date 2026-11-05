@@ -57,7 +57,7 @@ try {
   const prisma = join(root, 'node_modules/prisma/build/index.js');
   await run(process.execPath, [prisma, 'generate'], { cwd: join(root, 'apps/api'), env });
   await run(process.execPath, [prisma, 'migrate', 'deploy'], { cwd: join(root, 'apps/api'), env });
-  await run(process.execPath, [join(root, 'node_modules/vitest/vitest.mjs'), 'run', 'test/auth.integration.test.ts', 'test/practice.integration.test.ts', 'test/academic.integration.test.ts', 'test/banks.integration.test.ts', 'test/ai.integration.test.ts'], { cwd: join(root, 'apps/api'), env });
+  await run(process.execPath, [join(root, 'node_modules/vitest/vitest.mjs'), 'run', 'test/auth.integration.test.ts', 'test/practice.integration.test.ts', 'test/academic.integration.test.ts', 'test/banks.integration.test.ts', 'test/ai.integration.test.ts', 'test/challenges.integration.test.ts'], { cwd: join(root, 'apps/api'), env });
 } catch (error) {
   console.error(error instanceof Error && error.message.startsWith('TEST_DATABASE_URL') ? error.message : 'PostgreSQL integration tests failed. Ensure initdb/pg_ctl are on PATH, set PG_BIN, or configure apps/api/.env.test.');
   process.exitCode = 1;

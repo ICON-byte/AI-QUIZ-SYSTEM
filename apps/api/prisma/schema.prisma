@@ -41,6 +41,7 @@ model User {
   questionBanks QuestionBank[]
   adultConfirmedAt DateTime?
   aiGenerations AiGeneration[]
+  challengeParticipations ChallengeParticipant[]
 }
 
 model LecturerVerification {
@@ -117,6 +118,7 @@ model Quiz {
   owner            User       @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   questions        QuizQuestion[]
   attempts         Attempt[]
+  challenge        Challenge?
 
   @@index([ownerId, createdAt])
   @@index([courseId, status])
@@ -334,4 +336,25 @@ model AiDispatch {
   jobId String? @db.Uuid
   leaseUntil DateTime?
   nextCallAt DateTime?
+}
+
+
+model Challenge {
+  quizId String @id @db.Uuid
+  closesAt DateTime?
+  closedAt DateTime?
+  inviteCodeHash String? @unique @db.Char(64)
+  inviteCodeSealed String?
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Restrict)
+  participants ChallengeParticipant[]
+  @@index([closesAt])
+}
+model ChallengeParticipant {
+  quizId String @db.Uuid
+  studentId String @db.Uuid
+  joinedAt DateTime @default(now())
+  challenge Challenge @relation(fields: [quizId], references: [quizId], onDelete: Restrict)
+  student User @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  @@id([quizId, studentId])
+  @@index([studentId, joinedAt])
 }

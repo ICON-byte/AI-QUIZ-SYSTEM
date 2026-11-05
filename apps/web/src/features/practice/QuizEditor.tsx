@@ -16,11 +16,27 @@ const blankQuestion = (): DraftQuestion => ({
   explanation: '',
 });
 
-export function QuizEditor({ academic = false }: { academic?: boolean }) {
+export function QuizEditor({
+  academic: legacyAcademic = false,
+  mode,
+}: {
+  academic?: boolean;
+  mode?: QuizSummary['mode'];
+}) {
+  const academic = mode ? mode === 'ASSESSMENT' : legacyAcademic;
+  const challenge = mode === 'CHALLENGE';
   const { quizId, courseId } = useParams();
-  const base = academic ? `/courses/${courseId}/assessments` : '/quizzes';
+  const base = challenge
+    ? '/challenges'
+    : academic
+      ? `/courses/${courseId}/assessments`
+      : '/quizzes';
   const query = useQuery({
-    queryKey: [academic ? 'courses' : 'practice', 'draft', quizId],
+    queryKey: [
+      challenge ? 'challenges' : academic ? 'courses' : 'practice',
+      'draft',
+      quizId,
+    ],
     queryFn: () => api<DraftQuiz>(`${base}/${quizId}/draft`),
     enabled: !!quizId,
     retry: false,
@@ -38,9 +54,10 @@ export function QuizEditor({ academic = false }: { academic?: boolean }) {
     );
   return (
     <EditorForm
-      key={`${academic}-${quizId ?? 'new'}`}
+      key={`${mode ?? academic}-${quizId ?? 'new'}`}
       initial={query.data}
       academic={academic}
+      mode={mode}
       courseId={courseId}
     />
   );
@@ -56,12 +73,15 @@ function localDate(iso?: string | null) {
 function EditorForm({
   initial,
   academic,
+  mode,
   courseId,
 }: {
   initial?: DraftQuiz;
   academic: boolean;
+  mode?: QuizSummary['mode'];
   courseId?: string;
 }) {
+  const challenge = mode === 'CHALLENGE';
   const navigate = useNavigate();
   const client = useQueryClient();
   const [title, setTitle] = useState(initial?.title ?? '');
@@ -83,12 +103,22 @@ function EditorForm({
   const [maxAttempts, setMaxAttempts] = useState(initial?.maxAttempts ?? 1);
   const [picking, setPicking] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const base = academic ? `/courses/${courseId}/assessments` : '/quizzes';
-  const back = academic ? `/courses/${courseId}` : '/practice';
+  const base = challenge
+    ? '/challenges'
+    : academic
+      ? `/courses/${courseId}/assessments`
+      : '/quizzes';
+  const back = challenge
+    ? '/challenges'
+    : academic
+      ? `/courses/${courseId}`
+      : '/practice';
   const editPath = (id: string) =>
-    academic
-      ? `/courses/${courseId}/assessments/${id}/edit`
-      : `/practice/${id}/edit`;
+    challenge
+      ? `/challenges/${id}/edit`
+      : academic
+        ? `/courses/${courseId}/assessments/${id}/edit`
+        : `/practice/${id}/edit`;
   useLeaveWarning(dirty);
 
   function changeQuestion(index: number, update: Partial<DraftQuestion>) {
@@ -128,7 +158,9 @@ function EditorForm({
               closesAt: closesAt ? new Date(closesAt).toISOString() : null,
               maxAttempts,
             }
-          : {}),
+          : challenge
+            ? { closesAt: closesAt ? new Date(closesAt).toISOString() : null }
+            : {}),
       };
       const saved = await api<DraftQuiz>(
         savedId ? `${base}/${savedId}` : base,
@@ -138,7 +170,11 @@ function EditorForm({
       setRevision(saved.revision);
       setSavedId(saved.id);
       client.setQueryData(
-        [academic ? 'courses' : 'practice', 'draft', saved.id],
+        [
+          challenge ? 'challenges' : academic ? 'courses' : 'practice',
+          'draft',
+          saved.id,
+        ],
         saved,
       );
       await client.invalidateQueries({ queryKey: ['practice', 'list'] });
@@ -149,7 +185,14 @@ function EditorForm({
         });
         await client.invalidateQueries({ queryKey: ['practice'] });
         await client.invalidateQueries({ queryKey: ['courses'] });
-        navigate(academic ? back : `/practice/${saved.id}`);
+        await client.invalidateQueries({ queryKey: ['challenges'] });
+        navigate(
+          challenge
+            ? `/challenges/${saved.id}/manage`
+            : academic
+              ? back
+              : `/practice/${saved.id}`,
+        );
       } else if (!initial) navigate(editPath(saved.id), { replace: true });
       else setNotice('Draft saved.');
     } catch (error) {
@@ -165,18 +208,26 @@ function EditorForm({
         <div>
           <p className="context-label">
             <Link to={back}>
-              {academic ? 'Course assessments' : 'Personal practice'}
+              {challenge
+                ? 'Friends challenges'
+                : academic
+                  ? 'Course assessments'
+                  : 'Personal practice'}
             </Link>{' '}
             / {initial ? 'Edit draft' : 'New quiz'}
           </p>
           <h1>
-            {academic
+            {challenge
               ? initial
-                ? 'Edit assessment draft'
-                : 'Create an assessment'
-              : initial
-                ? 'Edit your quiz'
-                : 'Create a practice quiz'}
+                ? 'Edit challenge draft'
+                : 'Create a challenge'
+              : academic
+                ? initial
+                  ? 'Edit assessment draft'
+                  : 'Create an assessment'
+                : initial
+                  ? 'Edit your quiz'
+                  : 'Create a practice quiz'}
           </h1>
           <p className="muted">Write the questions you want to come back to.</p>
         </div>
@@ -192,6 +243,30 @@ function EditorForm({
           <div className="editor-layout">
             <section className="panel">
               <h2>Quiz details</h2>
+              {challenge ? (
+                <>
+                  <label className="field">
+                    Closing date and time{' '}
+                    <span className="field-hint">
+                      Optional; local timezone. Otherwise stays open until you
+                      close it.
+                    </span>
+                    <input
+                      type="datetime-local"
+                      value={closesAt}
+                      onChange={(event) => {
+                        setClosesAt(event.target.value);
+                        setDirty(true);
+                      }}
+                    />
+                  </label>
+                  <p className="field-hint">
+                    One attempt per friend. You cannot participate in your own
+                    ranked challenge. Published questions and schedules are
+                    permanent; closing early ends active attempts.
+                  </p>
+                </>
+              ) : null}
               {academic ? (
                 <div className="assessment-settings">
                   <h3>Assessment availability</h3>
@@ -439,7 +514,7 @@ function EditorForm({
               <label className="field">
                 Question {index + 1} explanation{' '}
                 <span className="field-hint">
-                  {academic
+                  {challenge ? 'Optional · shown after the challenge closes' : academic
                     ? 'Optional · shown after the assessment closes'
                     : 'Optional · shown after submission'}
                 </span>

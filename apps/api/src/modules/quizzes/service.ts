@@ -7,6 +7,7 @@ import {
   quizInclude,
   quizSummary,
   databaseNow,
+  type Tx,
 } from './data.js';
 import type { QuizInput } from './validation.js';
 import { ownedCourse } from '../courses/access.js';
@@ -21,8 +22,17 @@ type Settings = {
   closesAt?: string | null;
   maxAttempts?: number;
 };
-export function createQuizService(db: Database, courseId?: string) {
-  const mode = courseId ? ('ASSESSMENT' as const) : ('PRACTICE' as const);
+export function createQuizService(
+  db: Database,
+  context?: string | { mode: 'CHALLENGE' },
+) {
+  const courseId = typeof context === 'string' ? context : undefined;
+  const challenge = typeof context === 'object';
+  const mode = challenge
+    ? ('CHALLENGE' as const)
+    : courseId
+      ? ('ASSESSMENT' as const)
+      : ('PRACTICE' as const);
   const scope = courseId ? { courseId } : {};
   const settings = (input: Settings) =>
     courseId
@@ -57,6 +67,17 @@ export function createQuizService(db: Database, courseId?: string) {
             mode,
             ...scope,
             ...settings(input),
+            ...(challenge
+              ? {
+                  challenge: {
+                    create: {
+                      closesAt: input.closesAt
+                        ? new Date(input.closesAt)
+                        : null,
+                    },
+                  },
+                }
+              : {}),
             ownerId: userId,
             title: input.title,
             description: input.description,
@@ -107,6 +128,17 @@ export function createQuizService(db: Database, courseId?: string) {
             where: { id },
             data: {
               ...settings(input),
+              ...(challenge
+                ? {
+                    challenge: {
+                      update: {
+                        closesAt: input.closesAt
+                          ? new Date(input.closesAt)
+                          : null,
+                      },
+                    },
+                  }
+                : {}),
               title: input.title,
               description: input.description,
               timeLimitSeconds: input.timeLimitSeconds,
@@ -118,7 +150,12 @@ export function createQuizService(db: Database, courseId?: string) {
         );
       });
     },
-    async publish(userId: string, id: string, revision: number) {
+    async publish(
+      userId: string,
+      id: string,
+      revision: number,
+      prepare?: (tx: Tx) => Promise<void>,
+    ) {
       return db.$transaction(async (tx) => {
         if (courseId) await ownedCourse(tx, courseId, userId, true);
         await lock(tx, `quiz:${id}`);
@@ -139,6 +176,16 @@ export function createQuizService(db: Database, courseId?: string) {
             400,
             'INVALID_SCHEDULE',
             'Choose a future closing date after the opening date before publishing.',
+          );
+        if (
+          challenge &&
+          quiz.challenge?.closesAt &&
+          quiz.challenge.closesAt <= now
+        )
+          throw new HttpError(
+            400,
+            'INVALID_SCHEDULE',
+            'Choose a future challenge closing time.',
           );
         if (quiz.revision !== revision)
           throw new HttpError(
@@ -166,6 +213,7 @@ export function createQuizService(db: Database, courseId?: string) {
             'Each question needs four options and one correct answer.',
           );
         }
+        if (prepare) await prepare(tx);
         return quizSummary(
           await tx.quiz.update({
             where: { id },
@@ -183,17 +231,31 @@ export function createQuizService(db: Database, courseId?: string) {
       return db.$transaction(async (tx) => {
         if (courseId) await ownedCourse(tx, courseId, userId, true);
         await lock(tx, `quiz:${id}`);
-        const source = await tx.quiz.findFirst({ where: { id, ownerId: userId, mode, ...scope }, include: quizInclude });
+        const source = await tx.quiz.findFirst({
+          where: { id, ownerId: userId, mode, ...scope },
+          include: quizInclude,
+        });
         if (!source) throw quizMissing();
-        return authorQuiz(await tx.quiz.create({
-          data: {
-            ownerId: userId, mode, ...scope, title: `${source.title.slice(0, 143)} (copy)`,
-            description: source.description, timeLimitSeconds: source.timeLimitSeconds,
-            // Copies need a newly chosen assessment schedule before publishing.
-            maxAttempts: source.maxAttempts,
-            questions: { create: questionData(authorQuiz(source).questions as QuizInput['questions']) },
-          }, include: quizInclude,
-        }));
+        return authorQuiz(
+          await tx.quiz.create({
+            data: {
+              ownerId: userId,
+              mode,
+              ...scope,
+              title: `${source.title.slice(0, 143)} (copy)`,
+              description: source.description,
+              timeLimitSeconds: source.timeLimitSeconds,
+              // Copies need a newly chosen assessment schedule before publishing.
+              maxAttempts: source.maxAttempts,
+              questions: {
+                create: questionData(
+                  authorQuiz(source).questions as QuizInput['questions'],
+                ),
+              },
+            },
+            include: quizInclude,
+          }),
+        );
       });
     },
   };

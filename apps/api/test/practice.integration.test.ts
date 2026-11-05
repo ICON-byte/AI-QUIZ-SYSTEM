@@ -260,7 +260,7 @@ describe.sequential('personal practice and shared engine on PostgreSQL', () => {
     ]);
   });
 
-  it('rejects drafts, other owners, and future quiz modes when starting', async () => {
+  it('rejects drafts, other owners, and converting practice into a challenge', async () => {
     const draft = await quizzes.create(owner.id, input);
     expect(
       (await mutate('post', `/quizzes/${draft.id}/attempts`, {})).status,
@@ -277,17 +277,9 @@ describe.sequential('personal practice and shared engine on PostgreSQL', () => {
       ).status,
     ).toBe(404);
     const future = await quizzes.create(owner.id, input);
-    await db.quiz.update({
-      where: { id: future.id },
-      data: { mode: 'CHALLENGE' },
-    });
-    await db.quiz.update({
-      where: { id: future.id },
-      data: { status: 'PUBLISHED', publishedAt: new Date() },
-    });
-    expect(
-      (await mutate('post', `/quizzes/${future.id}/attempts`, {})).status,
-    ).toBe(404);
+    await expect(
+      db.quiz.update({ where: { id: future.id }, data: { mode: 'CHALLENGE' } }),
+    ).rejects.toThrow();
   });
 
   it('starts and resumes exactly one active attempt under concurrent requests', async () => {

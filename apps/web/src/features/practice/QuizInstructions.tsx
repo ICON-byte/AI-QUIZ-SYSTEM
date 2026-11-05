@@ -6,23 +6,43 @@ import { PracticeError } from './PracticeUi';
 import { safeError, timerLabel } from './format';
 import type { QuizAttempt, QuizSummary } from './types';
 
-export function QuizInstructions({ academic = false }: { academic?: boolean }) {
+export function QuizInstructions({
+  academic: legacyAcademic = false,
+  mode,
+}: {
+  academic?: boolean;
+  mode?: QuizSummary['mode'];
+}) {
+  const academic = mode ? mode === 'ASSESSMENT' : legacyAcademic;
+  const challenge = mode === 'CHALLENGE';
+  const attemptPath = challenge
+    ? '/challenges/attempts'
+    : academic
+      ? '/attempts'
+      : '/practice/attempts';
   const { quizId } = useParams();
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const query = useQuery({
-    queryKey: ['practice', 'quiz', quizId],
+    queryKey: [challenge ? 'challenges' : 'practice', 'quiz', quizId],
     queryFn: () =>
       api<
         QuizSummary & {
           serverNow?: string;
+          isCreator?: boolean;
           courseArchived?: boolean;
           attempts?: { id: string; status: string; attemptNumber: number }[];
         }
-      >(academic ? `/assessments/${quizId}` : `/quizzes/${quizId}`),
+      >(
+        challenge
+          ? `/challenges/${quizId}`
+          : academic
+            ? `/assessments/${quizId}`
+            : `/quizzes/${quizId}`,
+      ),
     retry: false,
-    refetchInterval: academic ? 15000 : false,
+    refetchInterval: academic || challenge ? 15000 : false,
   });
   async function start() {
     setPending(true);
@@ -33,7 +53,7 @@ export function QuizInstructions({ academic = false }: { academic?: boolean }) {
         body: '{}',
       });
       navigate(
-        `${academic ? '/attempts' : '/practice/attempts'}/${attempt.id}${attempt.status === 'IN_PROGRESS' ? '' : '/result'}`,
+        `${attemptPath}/${attempt.id}${attempt.status === 'IN_PROGRESS' ? '' : '/result'}`,
       );
     } catch (error) {
       setError(safeError(error));
@@ -62,13 +82,30 @@ export function QuizInstructions({ academic = false }: { academic?: boolean }) {
     !!(quiz.opensAt && Date.parse(quiz.opensAt) > now) ||
     !!(quiz.closesAt && Date.parse(quiz.closesAt) <= now) ||
     (quiz.attempts?.length ?? 0) >= (quiz.maxAttempts ?? 1);
+  const canViewLeaderboard =
+    !!quiz.isCreator ||
+    !!quiz.closedAt ||
+    !!(quiz.closesAt && Date.parse(quiz.closesAt) <= now) ||
+    !!quiz.attempts?.some((attempt) => attempt.status !== 'IN_PROGRESS');
   return (
     <>
       <div className="practice-heading">
         <div>
           <p className="context-label">
-            <Link to={academic ? `/courses/${quiz.courseId}` : '/practice'}>
-              {academic ? 'Course assessments' : 'Personal practice'}
+            <Link
+              to={
+                challenge
+                  ? '/challenges'
+                  : academic
+                    ? `/courses/${quiz.courseId}`
+                    : '/practice'
+              }
+            >
+              {challenge
+                ? 'Friends challenges'
+                : academic
+                  ? 'Course assessments'
+                  : 'Personal practice'}
             </Link>{' '}
             / Instructions
           </p>
@@ -78,7 +115,11 @@ export function QuizInstructions({ academic = false }: { academic?: boolean }) {
           ) : null}
         </div>
         <span className="status neutral">
-          {academic ? 'Official assessment' : 'Personal practice'}
+          {challenge
+            ? 'Friends challenge'
+            : academic
+              ? 'Official assessment'
+              : 'Personal practice'}
         </span>
       </div>
       <div className="instructions-layout">
@@ -102,13 +143,15 @@ export function QuizInstructions({ academic = false }: { academic?: boolean }) {
             <div>
               <dt>Review</dt>
               <dd>
-                {academic
-                  ? 'Scores appear after submission. Answers and explanations appear only after the assessment closes.'
-                  : 'Answers and explanations appear after you submit.'}
+                {challenge
+                  ? 'Scores appear after submission. Answers and explanations appear only after the challenge closes.'
+                  : academic
+                    ? 'Scores appear after submission. Answers and explanations appear only after the assessment closes.'
+                    : 'Answers and explanations appear after you submit.'}
               </dd>
             </div>
           </dl>
-          {academic ? (
+          {academic || challenge ? (
             <dl className="detail-list instruction-facts">
               <div>
                 <dt>Opens</dt>
@@ -152,25 +195,40 @@ export function QuizInstructions({ academic = false }: { academic?: boolean }) {
           ) : null}
         </section>
         <div className="instructions-aside">
-          <h2>{academic ? 'Before you start' : 'Make it your own pace'}</h2>
+          <h2>
+            {academic || challenge
+              ? 'Before you start'
+              : 'Make it your own pace'}
+          </h2>
           <p className="muted">
             Answers save as you choose them. You can move between questions and
             return to a saved attempt.
           </p>
           <p className="muted">
-            {academic
-              ? 'The timer and assessment closing time are enforced by the server. Leaving the page does not pause the deadline.'
-              : quiz.timeLimitSeconds
-                ? 'Your timer continues during disconnections. When time ends, your saved answers are graded.'
-                : 'There is no timer. Resume your attempt whenever you’re ready.'}
+            {challenge
+              ? 'The server enforces your timer and challenge closing time. Manual closure ends active attempts. Leaving does not pause elapsed time.'
+              : academic
+                ? 'The timer and assessment closing time are enforced by the server. Leaving the page does not pause the deadline.'
+                : quiz.timeLimitSeconds
+                  ? 'Your timer continues during disconnections. When time ends, your saved answers are graded.'
+                  : 'There is no timer. Resume your attempt whenever you’re ready.'}
           </p>
           <p className="field-hint">
-            {academic
-              ? 'Starting again resumes an unfinished attempt. Each new attempt counts toward the published limit.'
-              : 'Starting again resumes an unfinished attempt. After submission you can take a new attempt without changing earlier results.'}
+            {challenge
+              ? 'You receive one attempt. Starting again returns your existing attempt; there are no retakes.'
+              : academic
+                ? 'Starting again resumes an unfinished attempt. Each new attempt counts toward the published limit.'
+                : 'Starting again resumes an unfinished attempt. After submission you can take a new attempt without changing earlier results.'}
           </p>
           {quiz.status === 'DRAFT' ? (
-            <Link className="button secondary" to={`/practice/${quiz.id}/edit`}>
+            <Link
+              className="button secondary"
+              to={
+                challenge
+                  ? `/challenges/${quiz.id}/edit`
+                  : `/practice/${quiz.id}/edit`
+              }
+            >
               Continue editing draft
             </Link>
           ) : (
@@ -179,24 +237,48 @@ export function QuizInstructions({ academic = false }: { academic?: boolean }) {
               onClick={() => {
                 void start();
               }}
-              disabled={pending || (academic && !existingActive && unavailable)}
+              disabled={
+                pending ||
+                !!quiz.isCreator ||
+                ((academic || challenge) && !existingActive && unavailable)
+              }
             >
               {pending
                 ? 'Opening attempt…'
-                : academic
-                  ? 'Start or resume assessment'
-                  : 'Start or resume practice'}{' '}
+                : challenge
+                  ? 'Start or resume challenge'
+                  : academic
+                    ? 'Start or resume assessment'
+                    : 'Start or resume practice'}{' '}
               ↗
             </button>
           )}
+          {challenge && canViewLeaderboard ? (
+            <p>
+              <Link
+                to={
+                  quiz.isCreator
+                    ? `/challenges/${quiz.id}/manage`
+                    : `/challenges/${quiz.id}/leaderboard`
+                }
+              >
+                {quiz.isCreator ? 'Manage your challenge' : 'View leaderboard'}
+              </Link>
+            </p>
+          ) : null}
           {error ? <PracticeError error={error} /> : null}
-          {academic && quiz.attempts?.length ? (
+          {challenge && !canViewLeaderboard ? (
+            <p className="field-hint">
+              The leaderboard unlocks after you finish or the challenge closes.
+            </p>
+          ) : null}
+          {(academic || challenge) && quiz.attempts?.length ? (
             <section className="assessment-attempts">
               <h2>Your attempts</h2>
               {quiz.attempts.map((attempt) => (
                 <p key={attempt.id}>
                   <Link
-                    to={`/attempts/${attempt.id}${attempt.status === 'IN_PROGRESS' ? '' : '/result'}`}
+                    to={`${attemptPath}/${attempt.id}${attempt.status === 'IN_PROGRESS' ? '' : '/result'}`}
                   >
                     Attempt {attempt.attemptNumber} ·{' '}
                     {attempt.status === 'IN_PROGRESS'

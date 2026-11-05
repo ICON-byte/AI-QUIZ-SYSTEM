@@ -1,12 +1,15 @@
 import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, Navigate, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate, useLocation } from 'react-router';
+import { invitationReturn } from './return';
 import { api, ApiError, type User } from '../../lib/api';
 import { sessionKey, useSession } from './session';
 import { Brand } from '../../components/Brand';
 import { Feedback, Loading } from '../../components/Feedback';
 
 export function AuthPage({ register = false }: { register?: boolean }) {
+  const location=useLocation();
+  const returnTo=invitationReturn((location.state as {returnTo?:unknown}|null)?.returnTo);
   const session = useSession();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -17,7 +20,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
 
   if (session.isPending) return <Loading />;
   if (session.error) return <main className="standalone"><Feedback message={session.error.message} retry={() => { void session.refetch(); }} /></main>;
-  if (session.data) return <Navigate to="/dashboard" replace />;
+  if (session.data) return <Navigate to={returnTo} replace />;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,7 +40,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
         })
       }, false);
       queryClient.setQueryData(sessionKey, result.user);
-      navigate('/dashboard', { replace: true });
+      navigate(returnTo, { replace: true });
     } catch (error) {
       setError(error instanceof ApiError ? error : new ApiError(0, 'Unable to sign in. Please try again.'));
     } finally { setPending(false); }
@@ -98,7 +101,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
             <span aria-hidden="true">↗</span>
           </button>
         </form>
-        <p className="auth-switch">{register ? 'Already have an account?' : 'New to AI Quiz?'} <Link to={register ? '/login' : '/register'}>{register ? 'Sign in' : 'Create an account'}</Link></p>
+        <p className="auth-switch">{register ? 'Already have an account?' : 'New to AI Quiz?'} <Link to={register ? '/login' : '/register'} state={{returnTo}}>{register ? 'Sign in' : 'Create an account'}</Link></p>
       </div>
     </section>
   </main>;

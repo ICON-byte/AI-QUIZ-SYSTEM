@@ -1,12 +1,12 @@
 # AI-Powered Online Quiz System
 
 A React and Express application for academic assessments and personal learning.
-**Stages 1–5 are implemented:** project foundation, student/lecturer accounts,
+**Stages 1–6 are implemented:** project foundation, student/lecturer accounts,
 secure sessions, role authorization, operator-managed lecturer verification,
 manual personal practice, lecturer-owned courses, enrollment, official assessments,
 a shared attempt engine, private question banks, and CSV import.
 Stage 5 adds AI question generation from topics and reviewed PDF, DOCX and TXT text.
-Friends challenges remain deferred.
+Stage 6 adds private, asynchronous student challenges and leaderboards.
 
 ## Requirements
 
@@ -420,8 +420,9 @@ serve `apps/web/dist` with SPA history fallback, and reverse-proxy `/api` to Exp
 on the same origin. Configure TLS, HTTPS `APP_ORIGIN`, production mode, and the exact
 proxy hop count. The API deliberately binds to loopback for this topology.
 
-Stage 6 requires separate approval. Friends challenges remain outside the current
-implementation.
+Stage 6 includes asynchronous friends challenges and private leaderboards.
+Stage 7 requires separate approval. Live multiplayer, chat, tournaments, payments
+and public global rankings remain outside the implementation.
 
 ## Reusable question banks and CSV import (Stage 4)
 
@@ -844,3 +845,136 @@ questions. For a PDF with wrapped lines, a matching excerpt may use normal space
 Review the questions and source notes, then save to a bank or add to a draft. If a
 fresh request fails, share only the request ID, diagnostic category/field paths,
 counts, finish reason and token metadata. Do not share private text or API keys.
+
+
+## Friends challenges and leaderboards (Stage 6)
+
+Stage 6 reuses the quiz editor, private bank selector, reviewed AI questions,
+autosave, grading and shared attempt engine. Challenges are asynchronous and
+student-only. No multiplayer, chat, tournaments, payments, friendship graph or
+global rankings are implemented.
+
+Run `npm run db:generate` and `npm run db:deploy` to apply the additive
+`202611050007_challenges` migration. It adds Challenge (one-to-one with Quiz) and
+ChallengeParticipant (unique quiz/student membership), plus scoped SQL guards.
+Existing questions, attempts, grades, sessions and AI data are not rewritten.
+
+### Invitation encryption configuration
+
+Set backend-only `CHALLENGE_INVITE_KEY` in `apps/api/.env` to **64 hexadecimal
+characters representing 32 random bytes**. Generate it independently:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Never reuse JWT_SECRET, commit this key, or put it in frontend/VITE variables.
+Restart the API after configuring it. A missing key disables challenge publishing
+and invitation retrieval; drafts and all previous stages continue to work. An
+invalid key fails configuration validation. The example intentionally leaves it
+blank. No additional dependency, paid service or scheduling infrastructure is used.
+
+Keep this key stable and backed up. Invitations are encrypted using AES-256-GCM,
+with a fresh nonce and the quiz ID as authenticated associated data, and separately
+hashed with SHA-256 for lookup. Only the creator can retrieve a plaintext code/link.
+Changing the key does not re-encrypt old invitations: old codes can still join via
+their hashes, but creators cannot retrieve them until the original key is restored
+or a controlled re-encryption migration is performed. No key-rotation UI is added.
+
+### Workflow and policies
+
+Students have Created, Joined and History views. Create a draft with manual
+questions, owned bank copies, or reviewed AI output. An optional timer is 1?180
+minutes; an optional closing date/time is entered in the device timezone, sent as
+an ISO offset, and stored as UTC. Publishing requires 1?50 valid questions and a
+future closing time if one is selected. Questions, options, timer and schedule
+then become immutable. Challenge metadata holds closure separately from Quiz,
+so published practice/assessment protections remain intact.
+
+Copy an invitation from the creator management page. The 24-character random code
+is in a URL fragment (`/challenges/join#code=...`), not a server query string.
+Login/registration preserves only a validated internal invitation return. Friends
+explicitly join after a notice that their display name, score and completion time
+will appear to eligible members. Joining does not start timing or consume an attempt.
+There is no public challenge listing. A forwarded code can admit another student;
+invites are not person-bound. New joins stop at closure.
+
+Each joined student gets one lifetime attempt; creators cannot participate. Repeated
+starts resume or return that same attempt. All friends receive identical frozen
+questions/options. Timers and completion duration include disconnections and time
+away. Autosaves retain optimistic revisions and safe lost-response retries. Scores
+appear on submission; correct answers, explanations and saved source notes appear
+only in a finalized participant's own result after closure. Creators already know
+their authoring keys; they never gain access to individual participant selections.
+
+The effective cutoff is the earliest timer deadline, scheduled closing time or
+manual close. Closure is permanent and can happen during an attempt. Only saved
+answers before the cutoff are graded; unanswered questions get zero. New attempts
+and late saves are rejected. Request-time checks and the existing 15-second sweep
+enforce closure even after downtime; finalization uses the original cutoff, not
+sweep time. An untimed challenge without a schedule stays open until manually closed.
+No separate scheduler is required.
+
+Close/detail/leaderboard requests finalize up to 100 due attempts per pass in
+separate transactions. The sweep handles remaining work. A leaderboard with due
+attempts remaining shows an updating state with no premature final rows. Retry or
+polling completes processing. Rankings use PostgreSQL RANK() over all finalized
+attempts before pagination (20 rows/page), by score descending then timestamp
+completion duration in milliseconds ascending. Exact ties share competition ranks
+1,1,3. Milliseconds are displayed so ordering is explainable. Submitted and expired
+attempts count; students who never started do not.
+
+Creators can view rankings throughout. Members can view them after finalizing their
+own attempt or after closure. Nonmembers cannot. DTOs contain only display names,
+score/percentage, duration, rank and a viewer marker: no emails, account IDs, answer
+selections, invitation ciphertext or hash. History retains separate participant
+scores. Question banks remain private; published challenge questions are snapshots.
+AI privacy, document retention, source-reference checks and quotas are unchanged.
+The system enforces one attempt per account, not unique human identity or proctoring.
+
+### Challenge API
+
+All endpoints are authenticated, active-student-only under `/api/v1/challenges`.
+Mutations retain exact-origin, JSON and CSRF checks. Creation/update use the existing
+256 KiB quiz limit. Join requests have an additional 10/minute/IP limit.
+
+| Method | Suffix | Purpose |
+| --- | --- | --- |
+| GET | `?view=created&page=1` | Paginated Created, Joined or History views |
+| POST | `/` | Create a draft |
+| GET | `/history?page=1` | Finalized participation history |
+| POST | `/join` | Explicit idempotent join with `{code}` |
+| GET | `/:id` | Authorized instructions and own attempt status |
+| GET | `/:id/manage` | Creator statistics and management |
+| GET | `/:id/draft` | Creator's editable draft |
+| PUT | `/:id` | Revision-controlled draft update |
+| POST | `/:id/publish` | Publish with `{revision}` |
+| GET | `/:id/invitation` | Creator-only decrypted code/link |
+| POST | `/:id/close` | Permanent manual close |
+| GET | `/:id/leaderboard?page=1` | Authorized ranks or updating state |
+
+Start/resume/save/submit/result use the existing `/quizzes/:id/attempts` and
+`/attempts/...` APIs. Permissions and deadlines are enforced in shared services,
+transactions, database constraints and scoped triggers. Locks retain the ordering
+course -> quiz -> attempt. Challenge attempts always use attemptNumber=1, together
+with the existing quiz/student/attempt-number uniqueness constraint.
+
+### Manual verification
+
+1. Configure the key, apply migrations, restart with `npm run dev`, and sign in as
+   a student at `http://localhost:5173`.
+2. Create a challenge from manual/bank questions or reviewed AI output. Save a
+   draft, set an optional future close, and publish. Copy its invitation link.
+3. Open another browser profile, follow the link, register/sign in as a student,
+   explicitly join, and confirm the timer starts only after Start.
+4. Answer, leave and resume; submit and check the score with answer review hidden.
+   Verify that starting again returns the same result and that another student's
+   attempt URL and private leaderboard cannot be accessed without authorization.
+5. Join with another student and leave an attempt active. Close as creator: the
+   active attempt is graded at that cutoff and late saves cannot change it.
+6. Confirm final rankings, ties and review release. Revisit Joined and History.
+   Repeat with a short scheduled close and no manual closure.
+
+All routine tests and browser workflows inject mocked AI responses. Do not make
+live Gemini calls during development verification without explicit approval.
+Stage 7 requires separate approval.
