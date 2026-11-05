@@ -28,6 +28,10 @@ export interface AiJob {
         inputTokens?: number;
         outputTokens?: number;
         totalTokens?: number;
+        requestedCount?: number;
+        returnedCount?: number;
+        sourceCount?: number;
+        sourceCharacters?: number;
       }[]
     | null;
   deadlineAt: string;

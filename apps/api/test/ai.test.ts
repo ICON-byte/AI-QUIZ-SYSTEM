@@ -11,6 +11,7 @@ import { loadConfig } from '../src/config/env.js';
 import {
   docxFixture,
   pdfFixture,
+  pdfWhitespaceFixture,
   educationalText,
   mockQuestions,
 } from './ai-fixtures.js';
@@ -62,7 +63,7 @@ describe('AI schemas and document extraction', () => {
       expect(() => validateOutput(JSON.stringify(output), request)).toThrow();
     }
   });
-  it('verifies document labels and exact supporting quotes', () => {
+  it('resolves document IDs to public labels and checks supporting quotes', () => {
     const request = {
       ...input(),
       kind: 'DOCUMENT' as const,
@@ -197,6 +198,54 @@ describe('official Gemini adapter with mocked SDK', () => {
     expect(sent.config.responseJsonSchema.properties.questions.minItems).toBe(
       5,
     );
+    const document = {
+      ...input(),
+      kind: 'DOCUMENT' as const,
+      topic: '',
+      textReviewed: true,
+      segments: [
+        { label: 'Page 3', text: educationalText },
+        { label: 'Page 7', text: 'Photosynthesis converts light energy.' },
+      ],
+    };
+    const original = structuredClone(document);
+    await provider.generate(
+      document,
+      'mock-model',
+      new AbortController().signal,
+    );
+    await provider.generate(
+      document,
+      'mock-model',
+      new AbortController().signal,
+      {
+        category: 'SOURCE_EXCERPT_MISMATCH',
+        fields: ['questions.0.source.quote'],
+      },
+    );
+    const documentCalls = generateContent.mock.calls
+      .slice(-2)
+      .map((call) => call[0]);
+    for (const call of documentCalls) {
+      expect(JSON.parse(call.contents).material).toEqual([
+        { id: 1, text: educationalText },
+        { id: 2, text: 'Photosynthesis converts light energy.' },
+      ]);
+      expect(
+        call.config.responseJsonSchema.properties.questions.items.properties
+          .source,
+      ).toEqual({
+        type: 'object',
+        additionalProperties: false,
+        required: ['id', 'quote'],
+        properties: {
+          id: { type: 'integer', minimum: 1, maximum: 2 },
+          quote: { type: 'string' },
+        },
+      });
+      expect(call.config.maxOutputTokens).toBe(cfg.AI_MAX_OUTPUT_TOKENS);
+    }
+    expect(document).toEqual(original);
     generateContent.mockRejectedValue({
       status: 404,
       message: 'private-provider-detail',
@@ -332,5 +381,212 @@ describe('conservative response normalization and diagnostics', () => {
     check(JSON.stringify(output), 'DUPLICATE_QUESTIONS');
     Object.assign(output.questions[0]!, { correctOption: 'private-content' });
     check(JSON.stringify(output), 'INVALID_FIELDS');
+  });
+});
+
+describe('hybrid document source references', () => {
+  const document = (text = educationalText) =>
+    generationInputSchema.parse({
+      ...input(),
+      kind: 'DOCUMENT',
+      topic: '',
+      textReviewed: true,
+      segments: [
+        { label: 'Page 1', text },
+        {
+          label: 'Page 2',
+          text: 'Photosynthesis converts light energy into chemical energy in chloroplasts.',
+        },
+      ],
+    });
+  it('resolves the last source ID only within the current reviewed document', () => {
+    const request = document();
+    const response = mockQuestions(request);
+    const quote = request.segments[1]!.text;
+    response.questions[0]!.source = { id: 2, quote };
+    expect(
+      validateOutput(JSON.stringify(response), request).questions[0]!.source,
+    ).toEqual({ label: 'Page 2', quote });
+    const otherDocument = structuredClone(request);
+    otherDocument.segments[1]!.text =
+      'A different reviewed passage about nuclear DNA.';
+    expect(() =>
+      validateOutput(JSON.stringify(response), otherDocument),
+    ).toThrowError(
+      expect.objectContaining({ code: 'SOURCE_EXCERPT_MISMATCH' }),
+    );
+  });
+  it.each([
+    [
+      'The cell  membrane regulates transport.',
+      'The cell membrane regulates transport.',
+    ],
+    [
+      'The cell\r\nmembrane regulates transport.',
+      'The cell membrane regulates transport.',
+    ],
+    [
+      'The cell\u00a0membrane regulates transport.',
+      'The cell membrane regulates transport.',
+    ],
+    [
+      'The cell\tmembrane regulates transport.',
+      'The cell membrane regulates transport.',
+    ],
+    ['A caf\u0065\u0301 contains cells.', 'A caf\u00e9 contains cells.'],
+  ])('accepts only equivalent Unicode and whitespace: %s', (text, quote) => {
+    const request = document(text + ' ' + educationalText);
+    const original = structuredClone(request);
+    const response = mockQuestions(request);
+    response.questions[0]!.source = { id: 1, quote };
+    const result = validateOutput(JSON.stringify(response), request);
+    expect(result.questions[0]!.source).toEqual({ label: 'Page 1', quote });
+    expect(result.questions[0]!.source).not.toHaveProperty('id');
+    expect(request).toEqual(original);
+  });
+  it.each([
+    ['The rate is -2.', 'The rate is 2.'],
+    ['The charge is \u22122.', 'The charge is -2.'],
+    ['The rate is 10.', 'The rate is 100.'],
+    ['Transport does not require ATP.', 'Transport does require ATP.'],
+    [
+      'A cell\u2019s membrane controls transport.',
+      "A cell's membrane controls transport.",
+    ],
+    ['The mem-\nbrane controls transport.', 'The membrane controls transport.'],
+    [
+      'The mem\u00adbrane controls transport.',
+      'The membrane controls transport.',
+    ],
+    ['A \ufb01lter controls transport.', 'A filter controls transport.'],
+    ['x\u00b2 is a square.', 'x2 is a square.'],
+    [
+      'The cell membrane regulates transport.',
+      'Cell membranes control transport.',
+    ],
+  ])(
+    'rejects punctuation, mathematical, hyphenation and wording changes: %s',
+    (text, quote) => {
+      const request = document(text + ' ' + educationalText);
+      const response = mockQuestions(request);
+      response.questions[0]!.source = { id: 1, quote };
+      expect(() =>
+        validateOutput(JSON.stringify(response), request),
+      ).toThrowError(
+        expect.objectContaining({
+          code: 'SOURCE_EXCERPT_MISMATCH',
+          fields: ['questions.0.source.quote'],
+        }),
+      );
+    },
+  );
+  it.each([
+    [null, 'SOURCE_MISSING', 'questions.0.source'],
+    [undefined, 'SOURCE_MISSING', 'questions.0.source'],
+    [{ quote: 'A copied excerpt' }, 'SOURCE_MISSING', 'questions.0.source.id'],
+    [{ id: 1 }, 'SOURCE_MISSING', 'questions.0.source.quote'],
+    [
+      { id: 999, quote: educationalText.slice(0, 30) },
+      'SOURCE_ID_UNKNOWN',
+      'questions.0.source.id',
+    ],
+    [
+      { id: '1', quote: educationalText.slice(0, 30) },
+      'SOURCE_ID_UNKNOWN',
+      'questions.0.source.id',
+    ],
+    [
+      { id: 1.5, quote: educationalText.slice(0, 30) },
+      'SOURCE_ID_UNKNOWN',
+      'questions.0.source.id',
+    ],
+    [
+      { id: 0, quote: educationalText.slice(0, 30) },
+      'SOURCE_ID_UNKNOWN',
+      'questions.0.source.id',
+    ],
+    [
+      { id: 2, quote: educationalText.slice(0, 30) },
+      'SOURCE_EXCERPT_MISMATCH',
+      'questions.0.source.quote',
+    ],
+    [
+      { id: 1, quote: 'invented-private-content' },
+      'SOURCE_EXCERPT_MISMATCH',
+      'questions.0.source.quote',
+    ],
+    [
+      { id: 1, quote: '   ' },
+      'SOURCE_EXCERPT_MISMATCH',
+      'questions.0.source.quote',
+    ],
+  ])(
+    'reports safe source failures without retaining invalid values: %j',
+    (source, code, path) => {
+      const request = document();
+      const response = mockQuestions(request);
+      Object.assign(response.questions[0]!, { source });
+      try {
+        validateOutput(JSON.stringify(response), request);
+        expect.fail('Expected validation failure');
+      } catch (error) {
+        expect(error).toMatchObject({
+          code,
+          fields: [path],
+          counts: {
+            requestedCount: 5,
+            returnedCount: 5,
+            sourceCount: 2,
+            sourceCharacters: request.segments.reduce(
+              (n, s) => n + s.text.length,
+              0,
+            ),
+          },
+        });
+        expect(JSON.stringify(error)).not.toContain('invented-private-content');
+        expect(JSON.stringify(error)).not.toContain(educationalText);
+      }
+    },
+  );
+  it('reproduces a real PDF extraction line break and accepts the matching single-space excerpt', async () => {
+    const segments = await extractContent(pdfWhitespaceFixture(), 'PDF', {
+      characters: 40000,
+      pages: 100,
+    });
+    expect(segments[0]!.text).toContain('cell\nmembrane');
+    const request = generationInputSchema.parse({ ...document(), segments });
+    const response = mockQuestions(request);
+    for (const q of response.questions)
+      q.source = { id: 1, quote: 'The cell membrane regulates transport.' };
+    expect(
+      validateOutput(JSON.stringify(response), request).questions,
+    ).toHaveLength(5);
+    expect(segments[0]!.text).toContain('cell\nmembrane');
+  });
+  it('rejects oversized excerpts and extra reference fields', () => {
+    for (const source of [
+      { id: 1, quote: 'x'.repeat(301) },
+      { id: 1, quote: educationalText.slice(0, 20), label: 'Page 1' },
+    ]) {
+      const request = document();
+      const response = mockQuestions(request);
+      Object.assign(response.questions[0]!, { source });
+      expect(() =>
+        validateOutput(JSON.stringify(response), request),
+      ).toThrowError(expect.objectContaining({ code: 'INVALID_FIELDS' }));
+    }
+  });
+  it('matches a late excerpt in a long document without increasing limits or changing text', () => {
+    const text = 'Public educational notes. '.repeat(1500) + educationalText;
+    const request = document(text);
+    const response = mockQuestions(request);
+    response.questions[0]!.source = {
+      id: 1,
+      quote: educationalText.slice(-65),
+    };
+    expect(
+      validateOutput(JSON.stringify(response), request).questions[0]!.source!
+        .quote,
+    ).toBe(educationalText.slice(-65));
   });
 });

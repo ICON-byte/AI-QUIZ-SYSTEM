@@ -577,6 +577,9 @@ describe('AI recovery reliability', () => {
         inputTokens: 11,
         outputTokens: 5,
         totalTokens: 16,
+        requestedCount: 5,
+        sourceCount: 0,
+        sourceCharacters: 0,
       },
       {
         attempt: 2,
@@ -585,6 +588,10 @@ describe('AI recovery reliability', () => {
         inputTokens: 12,
         outputTokens: 150,
         totalTokens: 162,
+        requestedCount: 5,
+        returnedCount: 5,
+        sourceCount: 0,
+        sourceCharacters: 0,
       },
     ]);
     expect(JSON.stringify(result.diagnostics)).not.toContain('private-content');
@@ -672,5 +679,215 @@ describe('AI recovery reliability', () => {
     expect(deleted.summary).toBeNull();
     expect(deleted.diagnostics).toBeNull();
     expect(deleted.charged).toBe(true);
+  });
+});
+
+describe('document reference recovery and persistence', () => {
+  const document = () =>
+    generationInputSchema.parse({
+      ...input(),
+      kind: 'DOCUMENT',
+      topic: '',
+      textReviewed: true,
+      segments: [
+        {
+          label: 'Page 3',
+          text: 'The cell\r\nmembrane regulates transport. ' + educationalText,
+        },
+        {
+          label: 'Page 7',
+          text: 'Photosynthesis converts light energy into chemical energy in chloroplasts.',
+        },
+      ],
+    });
+  it('uses stable document IDs during recovery, resolves public references and charges success once', async () => {
+    const request = document();
+    const job = await service.create(owner.id, request);
+    const generate = vi
+      .fn()
+      .mockImplementation(async (input, _model, _signal, recovery) => {
+        const response = mockQuestions(input);
+        response.questions[0]!.source = {
+          id: recovery ? 1 : 999,
+          quote: 'The cell membrane regulates transport.',
+        };
+        return {
+          text: JSON.stringify(response),
+          metadata: {
+            finishReason: 'STOP',
+            inputTokens: 101,
+            outputTokens: 202,
+            totalTokens: 303,
+          },
+        };
+      });
+    await createAiWorker(db, config, { generate }).tick();
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(generate.mock.calls[0]![0]).toEqual(request);
+    expect(generate.mock.calls[1]![0]).toEqual(request);
+    expect(generate.mock.calls[1]![3]).toEqual({
+      category: 'SOURCE_ID_UNKNOWN',
+      fields: ['questions.0.source.id'],
+    });
+    const result = await service.get(owner.id, job.id);
+    expect(result.status).toBe('READY');
+    expect(result.result).toMatchObject({
+      questions: [
+        expect.objectContaining({
+          source: {
+            label: 'Page 3',
+            quote: 'The cell membrane regulates transport.',
+          },
+        }),
+        ...Array.from({ length: 4 }, () => expect.any(Object)),
+      ],
+    });
+    expect(result.diagnostics).toMatchObject([
+      {
+        attempt: 1,
+        category: 'SOURCE_ID_UNKNOWN',
+        fields: ['questions.0.source.id'],
+        requestedCount: 5,
+        returnedCount: 5,
+        sourceCount: 2,
+      },
+      {
+        attempt: 2,
+        category: 'VALID',
+        inputTokens: 101,
+        outputTokens: 202,
+        totalTokens: 303,
+      },
+    ]);
+    expect((await db.aiUsageBucket.findFirstOrThrow()).providerCalls).toBe(2);
+    expect((await service.capabilities(owner.id)).remaining).toBe(4);
+    expect(
+      (await db.aiGeneration.findUniqueOrThrow({ where: { id: job.id } }))
+        .input,
+    ).toBeNull();
+  });
+  it.each(['SOURCE_MISSING', 'SOURCE_ID_UNKNOWN', 'SOURCE_EXCERPT_MISMATCH'])(
+    'bounds repeated %s failures and preserves provider/user accounting',
+    async (code) => {
+      const job = await service.create(owner.id, document());
+      const generate = vi.fn().mockImplementation(async (request) => {
+        const response = mockQuestions(request);
+        Object.assign(response.questions[0]!, {
+          source:
+            code === 'SOURCE_MISSING'
+              ? null
+              : code === 'SOURCE_ID_UNKNOWN'
+                ? { id: 999, quote: 'private-marker' }
+                : { id: 2, quote: 'The cell membrane regulates transport.' },
+        });
+        return JSON.stringify(response);
+      });
+      await createAiWorker(db, config, { generate }).tick();
+      const result = await service.get(owner.id, job.id);
+      expect(result.status).toBe('FAILED');
+      expect(generate).toHaveBeenCalledTimes(2);
+      expect(result.diagnostics).toMatchObject([
+        { category: code, requestedCount: 5, returnedCount: 5, sourceCount: 2 },
+        { category: code, requestedCount: 5, returnedCount: 5, sourceCount: 2 },
+      ]);
+      expect(JSON.stringify(result.diagnostics)).not.toContain(
+        'private-marker',
+      );
+      expect((await service.capabilities(owner.id)).remaining).toBe(5);
+      expect((await db.aiUsageBucket.findFirstOrThrow()).providerCalls).toBe(2);
+      expect(
+        (await db.aiGeneration.findUniqueOrThrow({ where: { id: job.id } }))
+          .input,
+      ).toBeNull();
+    },
+  );
+  it('does not allocate a third call after a transient failure then an excerpt mismatch', async () => {
+    const job = await service.create(owner.id, document());
+    const generate = vi
+      .fn()
+      .mockRejectedValueOnce(new ProviderFailure('PROVIDER_TEMPORARY', true, 1))
+      .mockImplementation(async (request) => {
+        const response = mockQuestions(request);
+        response.questions[0]!.source = {
+          id: 2,
+          quote: 'The cell membrane regulates transport.',
+        };
+        return JSON.stringify(response);
+      });
+    await createAiWorker(db, config, { generate }).tick();
+    expect(generate).toHaveBeenCalledTimes(2);
+    const result = await service.get(owner.id, job.id);
+    expect(result.status).toBe('FAILED');
+    expect(result.diagnostics).toMatchObject([
+      { category: 'PROVIDER_TEMPORARY' },
+      { category: 'SOURCE_EXCERPT_MISMATCH' },
+    ]);
+    expect((await service.capabilities(owner.id)).remaining).toBe(5);
+  });
+  it('preserves resolved source notes through review, idempotent bank acceptance and practice snapshots', async () => {
+    const job = await service.create(owner.id, document());
+    await createAiWorker(db, config, provider).tick();
+    const result = await service.get(owner.id, job.id);
+    const generated = result.result as {
+      questions: {
+        prompt: string;
+        options: [string, string, string, string];
+        correctOption: number;
+        explanation: string;
+        difficulty: 'MEDIUM';
+        topic: string;
+        source: { label: string; quote: string };
+      }[];
+    };
+    const questions = generated.questions.map(({ source, ...q }) => ({
+      ...q,
+      explanation:
+        q.explanation +
+        '\n\nSource: ' +
+        source.label +
+        ' - "' +
+        source.quote +
+        '"',
+    }));
+    const reviewed = await service.review(owner.id, job.id, { questions });
+    const body = {
+      questions: reviewed.questions,
+      newBank: {
+        title: 'Document source notes',
+        description: '',
+        courseId: null,
+      },
+    };
+    const [first, retry] = await Promise.all([
+      service.accept(owner.id, job.id, body),
+      service.accept(owner.id, job.id, body),
+    ]);
+    expect(first).toEqual(retry);
+    const stored = await db.question.findMany({
+      where: { bankId: first.bankId },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(stored).toHaveLength(5);
+    expect(stored.map((q) => q.explanation).sort()).toEqual(
+      questions.map((q) => q.explanation).sort(),
+    );
+    const copy = await createBankService(db, config.JWT_SECRET).select(
+      owner.id,
+      stored.map((q) => q.id),
+    );
+    const quiz = await createQuizService(db).create(owner.id, {
+      title: 'Document-grounded practice',
+      description: '',
+      timeLimitSeconds: null,
+      questions: copy.questions as typeof questions,
+    });
+    expect(quiz.questions.map((q) => q.explanation).sort()).toEqual(
+      questions.map((q) => q.explanation).sort(),
+    );
+    await service.discard(owner.id, job.id);
+    expect(await db.question.count({ where: { bankId: first.bankId } })).toBe(
+      5,
+    );
+    expect((await service.capabilities(owner.id)).remaining).toBe(4);
   });
 });

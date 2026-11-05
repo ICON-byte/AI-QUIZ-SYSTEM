@@ -78,6 +78,11 @@ export function createAiWorker(
       if (!job) return;
       jobId = job.id;
       const input = generationInputSchema.parse(job.input);
+      const counts = {
+        requestedCount: input.count,
+        sourceCount: input.segments.length,
+        sourceCharacters: input.segments.reduce((n, s) => n + s.text.length, 0),
+      };
       controller = new AbortController();
       const now = await db.$transaction((tx) => databaseNow(tx));
       const deadlineTimer = setTimeout(
@@ -163,6 +168,7 @@ export function createAiWorker(
                 ...metadata,
                 category: error.code,
                 fields: error.fields,
+                ...error.counts,
               });
               throw new ProviderFailure(
                 'INVALID_AI_OUTPUT',
@@ -175,6 +181,8 @@ export function createAiWorker(
               attempt: attempt + 1,
               ...metadata,
               category: 'VALID',
+              ...counts,
+              returnedCount: result.questions.length,
             });
             await db.aiGeneration.updateMany({
               where: { id: job.id, status: 'RUNNING' },
@@ -196,6 +204,7 @@ export function createAiWorker(
                 attempt: attempt + 1,
                 ...known.metadata,
                 category: known.code,
+                ...counts,
               });
             // Even a caller-supplied retryable flag cannot replay permanent failures.
             const eligible =

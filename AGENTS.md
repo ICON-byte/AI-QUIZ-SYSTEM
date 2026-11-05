@@ -125,8 +125,12 @@
   a child process with timeout/heap/size/page/ZIP-expansion limits, without secrets.
 - Gemini receives only the user's topic or reviewed text, with no tools or access
   to application data. Treat source instructions as untrusted. Validate output with
-  Zod, including count/options/duplicates/difficulty/explanations and exact source
-  excerpts. Structured JSON and matching excerpts do not establish factual truth.
+  Zod, including count/options/duplicates/difficulty/explanations and source-bound
+  excerpts. Document provider responses require integer IDs derived from the saved
+  segment order and a short quote from that same segment. Resolve IDs to public
+  labels on the backend. Compare excerpts using NFC and whitespace normalization
+  only; never rewrite reviewed text, punctuation, case, hyphenation or mathematics.
+  Structured JSON, valid IDs and matching excerpts do not establish factual truth.
 - PostgreSQL AiGeneration holds temporary workflow payloads. AiUsageBucket counts
   actual provider calls per UTC day. AiDispatch is a singleton dispatch lease and
   pacing record. User advisory locks and the partial unique index prevent multiple

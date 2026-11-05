@@ -752,9 +752,9 @@ all validation and transient recovery shares the existing **two-call maximum**,
 project pacing, deadline and daily call budget. Only a valid final question set
 uses the user's successful-generation allowance.
 
-The provider schema now requests exactly the selected count. Server validation
+The provider schema requests exactly the selected count. Server validation
 still requires four distinct options, a zero-based answer, an explanation, the
-requested difficulty, unique prompts and verified document references. Only
+requested difficulty, unique prompts and source-bound document references. Only
 surrounding whitespace, difficulty letter case and explicit A-D answer labels are
 normalized. Numeric strings, missing explanations and unsupported citations are
 rejected; questions are never silently dropped or invented to repair a set.
@@ -802,3 +802,45 @@ On a busy development machine, run verification suites separately. PowerShell
 `$env:VITEST_MAX_WORKERS='1'` reduces test process contention for `npm test` and
 `npm run test:integration`; concurrency-sensitive tests still issue simultaneous
 requests inside each test. This does not change application settings or budgets.
+
+
+### Document source-reference reliability
+
+Document generation uses request-scoped integer source IDs: the first reviewed
+segment is 1, the second is 2, and so on. IDs are derived from the immutable saved
+job input, so recovery calls use the same mapping. The provider receives only
+`{id, text}` segments, and must return `source: {id, quote}` for every document
+question. Topic responses still require `source: null`. The backend rejects
+unknown IDs and checks the excerpt only inside the referenced segment, never by
+searching unrelated segments or documents.
+
+Matching uses NFC and collapsed whitespace on comparison copies only. Line breaks,
+tabs, repeated spaces and nonbreaking spaces may differ. Reviewed text and valid
+returned excerpts remain unchanged. Punctuation, case, mathematical signs,
+superscripts, ligatures, soft/hard hyphens and paraphrases are not normalized away.
+Quotes remain limited to 300 characters. A matching excerpt proves text membership,
+not that the question or correct answer is factually supported; human review is
+still required, especially after editing a question.
+
+The public result remains `{label, quote}`: labels come from the reviewed source,
+not the model. Existing review controls copy this note into editable explanations
+when saving to banks or practice/assessment drafts. Accepted source notes follow
+normal bank/quiz retention; no document storage or new source database is added.
+All existing source-input deletion and review-expiry rules remain in effect.
+
+New diagnostics distinguish `SOURCE_MISSING`, `SOURCE_ID_UNKNOWN` and
+`SOURCE_EXCERPT_MISMATCH`, with safe question field paths. They record requested and
+returned question counts (when a response can be parsed), segment count and total
+reviewed character count. They never record source contents, returned invalid IDs,
+excerpts or complete provider responses. Missing returned counts are shown as
+unavailable, not zero. Token metadata, the two-call budget and successful-generation
+allowance rules remain unchanged; no extra provider verification call is made.
+
+No migration, new dependency or new environment variable is required. Restart the
+API and create a **fresh** generation to test this change. An old failed job will
+not rerun or acquire new diagnostics. Upload a small non-sensitive PDF/DOCX/TXT,
+review the extracted text, confirm the privacy notice, and request five MEDIUM
+questions. For a PDF with wrapped lines, a matching excerpt may use normal spaces.
+Review the questions and source notes, then save to a bank or add to a draft. If a
+fresh request fails, share only the request ID, diagnostic category/field paths,
+counts, finish reason and token metadata. Do not share private text or API keys.

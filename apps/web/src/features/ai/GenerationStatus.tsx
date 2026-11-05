@@ -68,6 +68,12 @@ export function GenerationStatus({ job }: { job: AiJob }) {
             {job.diagnostics.map((call) => (
               <li key={call.attempt}>
                 Call {call.attempt}: {call.category}
+                {call.requestedCount !== undefined
+                  ? ` · Questions: ${call.returnedCount ?? 'unavailable'} returned / ${call.requestedCount} requested`
+                  : ''}
+                {call.sourceCount !== undefined && call.sourceCount > 0
+                  ? ` · Sources: ${call.sourceCount} (${call.sourceCharacters ?? 'unavailable'} characters)`
+                  : ''}
                 {call.finishReason ? ` · ${call.finishReason}` : ''}
                 {call.fields?.length
                   ? ` · Fields: ${call.fields.join(', ')}`

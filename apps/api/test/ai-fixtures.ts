@@ -17,6 +17,14 @@ export function docxFixture(text = educationalText) {
 }
 export function pdfFixture(text = educationalText) {
   const stream = `BT /F1 10 Tf 40 750 Td (${text.replace(/[()\\]/g, '\\$&')}) Tj ET`;
+  return pdfFromStream(stream);
+}
+export function pdfWhitespaceFixture() {
+  return pdfFromStream(
+    'BT /F1 10 Tf 40 750 Td (The cell) Tj 0 -14 Td (membrane regulates transport.) Tj 0 -14 Td (The nucleus contains cellular DNA. Mitochondria produce ATP through respiration. Ribosomes synthesize proteins.) Tj ET',
+  );
+}
+function pdfFromStream(stream: string) {
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
@@ -56,7 +64,7 @@ export function mockQuestions(input: GenerationInput) {
       source:
         input.kind === 'DOCUMENT'
           ? {
-              label: input.segments[0]!.label,
+              id: 1,
               quote: input.segments[0]!.text.slice(0, 80),
             }
           : null,

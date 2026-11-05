@@ -43,6 +43,18 @@ const job = {
   acceptance: null,
   failure: null,
 };
+const groundedJob = {
+  ...job,
+  result: {
+    questions: questions.map((q) => ({
+      ...q,
+      source: {
+        label: 'Page 3',
+        quote: 'The cell membrane regulates transport.',
+      },
+    })),
+  },
+};
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -169,7 +181,7 @@ describe('AI generation interface', () => {
           ? caps
           : path.endsWith('/accept')
             ? { bankId: 'bank-id', savedCount: 4 }
-            : job,
+            : groundedJob,
       ),
     );
     const first = await screen.findByRole('region', {
@@ -200,6 +212,10 @@ describe('AI generation interface', () => {
     const call = mock.mock.calls.find((call) => call[0].endsWith('/accept'));
     const body = JSON.parse(call![1]!.body as string);
     expect(body.questions).toHaveLength(4);
+    expect(body.questions[0].explanation).toContain('Source: Page 3');
+    expect(body.questions[0].explanation).toContain(
+      'The cell membrane regulates transport.',
+    );
     expect(body.questions[0]).toMatchObject({
       prompt: 'Edited cell question',
       correctOption: 1,
@@ -278,7 +294,7 @@ describe('AI generation interface', () => {
                 ? { questions: JSON.parse(init!.body as string).questions }
                 : path.includes('/question-banks')
                   ? { banks: [], total: 0 }
-                  : job,
+                  : groundedJob,
           ),
         academic,
       );
@@ -304,6 +320,16 @@ describe('AI generation interface', () => {
         'Cell transport question 1',
       );
       expect(document.querySelectorAll('form form')).toHaveLength(0);
+      const reviewCall = mock.mock.calls.find((call) =>
+        call[0].endsWith('/review'),
+      );
+      expect(
+        JSON.parse(reviewCall![1]!.body as string).questions[0].explanation,
+      ).toContain('Source: Page 3');
+      expect(
+        (screen.getByLabelText(/Question 1 explanation/) as HTMLTextAreaElement)
+          .value,
+      ).toContain('Source: Page 3');
       expect(mock.mock.calls.some((call) => call[0].endsWith('/review'))).toBe(
         true,
       );
@@ -525,5 +551,52 @@ describe('lost request response', () => {
     );
     expect(requests).toHaveLength(2);
     expect(requests[0]![1]!.body).toBe(requests[1]![1]!.body);
+  });
+});
+
+describe('document diagnostics', () => {
+  it('shows source failure paths and safe counts while leaving unavailable counts unknown', async () => {
+    open('/ai?generation=job-id', (path) =>
+      json(
+        path.endsWith('/capabilities')
+          ? caps
+          : {
+              ...job,
+              status: 'FAILED',
+              result: null,
+              diagnostics: [
+                {
+                  attempt: 1,
+                  category: 'PROVIDER_TEMPORARY',
+                  requestedCount: 5,
+                  sourceCount: 2,
+                  sourceCharacters: 300,
+                },
+                {
+                  attempt: 2,
+                  category: 'SOURCE_EXCERPT_MISMATCH',
+                  fields: ['questions.0.source.quote'],
+                  requestedCount: 5,
+                  returnedCount: 5,
+                  sourceCount: 2,
+                  sourceCharacters: 300,
+                },
+              ],
+              failure: {
+                code: 'INVALID_AI_OUTPUT',
+                message: 'The AI response could not be validated.',
+              },
+            },
+      ),
+    );
+    await userEvent.click(await screen.findByText('Generation diagnostics'));
+    expect(
+      screen.getByText(/unavailable returned \/ 5 requested/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/5 returned \/ 5 requested/)).toBeInTheDocument();
+    expect(screen.getByText(/questions.0.source.quote/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Sources: 2 \(300 characters\)/)).toHaveLength(
+      2,
+    );
   });
 });
