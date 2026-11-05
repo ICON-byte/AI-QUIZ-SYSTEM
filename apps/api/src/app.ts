@@ -10,6 +10,7 @@ import { authRoutes } from './modules/auth/routes.js';
 import { authenticate, requireRole, requireVerifiedLecturer } from './modules/auth/authorization.js';
 import { practiceRoutes } from './modules/quizzes/routes.js';
 import { courseRoutes } from './modules/courses/routes.js';
+import { bankRoutes } from './modules/banks/routes.js';
 
 export function createApp(db: Database, config: Config) {
   const app = express();
@@ -35,6 +36,9 @@ export function createApp(db: Database, config: Config) {
   });
   app.use('/api/v1/quizzes', express.json({ limit: '256kb' }));
   app.use('/api/v1/courses/:courseId/assessments', express.json({ limit: '256kb' }));
+  // JSON transport preserves the existing CSRF contract; raw CSV is capped separately.
+  app.use('/api/v1/question-banks/:bankId/import', express.json({ limit: '2mb' }));
+  app.use('/api/v1/question-banks', express.json({ limit: '64kb' }));
   app.use(express.json({ limit: '16kb' }));
   app.use(cookieParser());
   const auth = authRoutes(db, config);
@@ -44,6 +48,7 @@ export function createApp(db: Database, config: Config) {
   app.use('/api/v1/auth/register', credentialsLimiter);
   app.use('/api/v1/auth', auth.router);
   const authenticated = authenticate(db, config);
+  app.use('/api/v1/question-banks', authenticated, bankRoutes(db, config));
   app.use('/api/v1/quizzes', authenticated, requireRole('STUDENT'));
   app.use('/api/v1/attempts', authenticated, requireRole('STUDENT'));
   app.use('/api/v1/practice/history', authenticated, requireRole('STUDENT'));

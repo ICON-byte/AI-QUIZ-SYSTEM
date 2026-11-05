@@ -3,9 +3,10 @@
 ## Scope and architecture
 
 - This is the AI-Powered Online Quiz System, an npm workspaces monorepo.
-- Stages 1–3 are authorized: authentication, manual practice, lecturer courses,
-  enrollment, and official assessments. Stage 4 and later require explicit approval.
-  Do not add AI, document uploads, question banks, or friends challenges yet.
+- Stages 1–4 are authorized: authentication, manual practice, lecturer courses,
+  enrollment, official assessments, private question banks and CSV import.
+  Stage 5 and later require explicit approval. Do not add AI, lecture-document
+  uploads, public banks, or friends challenges yet.
 - Frontend: React, Vite, TypeScript, Tailwind 4 (`apps/web`).
 - Backend: Node 24, Express 5, TypeScript, Prisma 7, PostgreSQL (`apps/api`).
 - Keep one API and database. Avoid additional infrastructure without a concrete need.
@@ -83,6 +84,27 @@
 - Share the editor, taking and result components between practice and assessments;
   do not fork autosave/grading/timing logic. Dates are accepted as ISO offsets,
   stored as UTC, and shown in the browser's local timezone.
+- Banks are private to their owner, including course-associated banks. Both roles
+  may author private banks; verification still protects official course operations.
+  Course associations must belong to the lecturer and never grant student access.
+- Question uses a four-element PostgreSQL text array and a correct-option index;
+  reuse questionSchema for bank/CSV validation. QuizQuestion remains an independent
+  immutable snapshot. Never link bank edits to quizzes or serialize bank answer
+  keys through taking/assessment review endpoints.
+- Lock course before bank when changing a course association. Bank writes lock
+  bank:<id>; cross-bank operations lock bank IDs in sorted order. Question/bank
+  edits use revisions. Archived banks/questions are read-only and cannot be selected.
+- CSV uses csv-parse on the server, JSON transport with the existing CSRF contract,
+  a 1 MiB UTF-8 content limit, 200 records, and 12 import requests/minute/IP.
+  Preview writes no questions or files. Confirmation revalidates exact content and
+  requires an owner/bank/content-bound, signed 15-minute token. Receipt insertion
+  and valid-row creation share the bank lock/transaction for idempotent retries.
+  Require explicit acknowledgement before skipping invalid rows; never silently
+  discard invalid records. Escape spreadsheet formulas at any CSV export boundary.
+- Bank capacity is 1,000 questions including archived records. Pagination is 20.
+  Quiz selections are at most 50 questions, copied into the existing draft aggregate.
+  Whole-quiz duplication creates fresh question/option IDs and no attempt history;
+  assessment copies require a new schedule before publication.
 
 ## Frontend conventions
 

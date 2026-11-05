@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DuplicateQuiz } from '../banks/DuplicateQuiz';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceUser } from '../../app/useWorkspaceUser';
@@ -228,6 +229,7 @@ export function CourseDetails() {
                     <div className="button-group">
                       {lecturer ? (
                         <>
+                          {!course.archivedAt ? <DuplicateQuiz id={quiz.id} courseId={courseId} /> : null}
                           {quiz.status === 'DRAFT' && !course.archivedAt ? (
                             <Link
                               className="button secondary"

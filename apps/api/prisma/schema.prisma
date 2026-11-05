@@ -38,6 +38,7 @@ model User {
   attempts     Attempt[]
   courses      Course[]
   enrollments  Enrollment[]
+  questionBanks QuestionBank[]
 }
 
 model LecturerVerification {
@@ -204,6 +205,7 @@ model Course {
   owner              User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   enrollments        Enrollment[]
   assessments        Quiz[]
+  questionBanks      QuestionBank[]
 
   @@unique([ownerId, code])
   @@index([ownerId, createdAt])
@@ -220,4 +222,60 @@ model Enrollment {
 
   @@id([courseId, studentId])
   @@index([studentId, status])
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model QuestionBank {
+  id String @id @default(uuid()) @db.Uuid
+  ownerId String @db.Uuid
+  courseId String? @db.Uuid
+  title String @db.VarChar(150)
+  description String @default("") @db.VarChar(2000)
+  revision Int @default(0)
+  archivedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  questions Question[]
+  imports CsvImportReceipt[]
+
+  @@index([ownerId, archivedAt, createdAt])
+  @@index([courseId])
+}
+
+// Bank questions are independent of the immutable QuizQuestion snapshots.
+model Question {
+  id String @id @default(uuid()) @db.Uuid
+  bankId String @db.Uuid
+  prompt String @db.VarChar(2000)
+  options String[] @db.VarChar(500)
+  correctOption Int
+  explanation String @default("") @db.VarChar(2000)
+  difficulty Difficulty @default(MEDIUM)
+  topic String @default("") @db.VarChar(100)
+  revision Int @default(0)
+  archivedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bank QuestionBank @relation(fields: [bankId], references: [id], onDelete: Restrict)
+
+  @@index([bankId, archivedAt, difficulty, createdAt])
+}
+
+// No source files are stored. A receipt makes confirmation retries idempotent.
+model CsvImportReceipt {
+  id String @id @db.Char(64)
+  bankId String @db.Uuid
+  importedCount Int
+  skippedCount Int
+  createdAt DateTime @default(now())
+  bank QuestionBank @relation(fields: [bankId], references: [id], onDelete: Restrict)
+
+  @@index([bankId, createdAt])
 }

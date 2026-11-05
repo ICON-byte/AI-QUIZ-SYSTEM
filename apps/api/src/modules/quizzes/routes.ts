@@ -33,6 +33,10 @@ export function practiceRoutes(db: Database) {
       await quizzes.get(req.auth!.user.id, idSchema.parse(req.params.id)),
     ),
   );
+  router.post('/quizzes/:id/duplicate', async (req, res) => {
+    emptySchema.parse(req.body);
+    res.status(201).json(await quizzes.duplicate(req.auth!.user.id, idSchema.parse(req.params.id)));
+  });
   router.get('/quizzes/:id/draft', async (req, res) =>
     res.json(
       await quizzes.get(req.auth!.user.id, idSchema.parse(req.params.id), true),

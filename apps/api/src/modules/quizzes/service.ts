@@ -179,5 +179,22 @@ export function createQuizService(db: Database, courseId?: string) {
         );
       });
     },
+    async duplicate(userId: string, id: string) {
+      return db.$transaction(async (tx) => {
+        if (courseId) await ownedCourse(tx, courseId, userId, true);
+        await lock(tx, `quiz:${id}`);
+        const source = await tx.quiz.findFirst({ where: { id, ownerId: userId, mode, ...scope }, include: quizInclude });
+        if (!source) throw quizMissing();
+        return authorQuiz(await tx.quiz.create({
+          data: {
+            ownerId: userId, mode, ...scope, title: `${source.title.slice(0, 143)} (copy)`,
+            description: source.description, timeLimitSeconds: source.timeLimitSeconds,
+            // Copies need a newly chosen assessment schedule before publishing.
+            maxAttempts: source.maxAttempts,
+            questions: { create: questionData(authorQuiz(source).questions as QuizInput['questions']) },
+          }, include: quizInclude,
+        }));
+      });
+    },
   };
 }

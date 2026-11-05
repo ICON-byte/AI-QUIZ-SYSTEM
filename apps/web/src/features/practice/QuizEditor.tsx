@@ -6,6 +6,7 @@ import { PracticeError } from './PracticeUi';
 import { safeError } from './format';
 import { useLeaveWarning } from './useLeaveWarning';
 import type { DraftQuestion, DraftQuiz, QuizSummary } from './types';
+import { QuestionPicker } from '../banks/QuestionPicker';
 
 const blankQuestion = (): DraftQuestion => ({
   prompt: '',
@@ -79,6 +80,7 @@ function EditorForm({
   const [opensAt, setOpensAt] = useState(localDate(initial?.opensAt));
   const [closesAt, setClosesAt] = useState(localDate(initial?.closesAt));
   const [maxAttempts, setMaxAttempts] = useState(initial?.maxAttempts ?? 1);
+  const [picking, setPicking] = useState(false);
   const base = academic ? `/courses/${courseId}/assessments` : '/quizzes';
   const back = academic ? `/courses/${courseId}` : '/practice';
   const editPath = (id: string) =>
@@ -304,6 +306,30 @@ function EditorForm({
               One mark per question. No negative marking.
             </p>
           </div>
+          <div className="bank-tools">
+            <button
+              className="button secondary"
+              type="button"
+              disabled={questions.length >= 50}
+              onClick={() => setPicking((value) => !value)}
+            >
+              Add from question bank
+            </button>
+          </div>
+          {picking ? (
+            <QuestionPicker
+              remaining={50 - questions.length}
+              onClose={() => setPicking(false)}
+              onAdd={(selected) => {
+                setQuestions((values) => [...values, ...selected]);
+                setDirty(true);
+                setNotice(
+                  `${selected.length} saved question${selected.length === 1 ? '' : 's'} added. Save your draft to keep them.`,
+                );
+                setPicking(false);
+              }}
+            />
+          ) : null}
           {questions.length === 0 ? (
             <div className="practice-empty panel">
               <p className="muted">

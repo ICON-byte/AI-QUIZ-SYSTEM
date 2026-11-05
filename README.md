@@ -1,10 +1,11 @@
 # AI-Powered Online Quiz System
 
 A React and Express application for academic assessments and personal learning.
-**Stages 1–3 are implemented:** project foundation, student/lecturer accounts,
+**Stages 1–4 are implemented:** project foundation, student/lecturer accounts,
 secure sessions, role authorization, operator-managed lecturer verification, and
 manual personal practice, lecturer-owned courses, enrollment, official assessments,
-and a reusable attempt engine. AI, uploads, question banks, and challenges remain deferred.
+and a reusable attempt engine, private reusable question banks, and CSV import.
+AI, lecture-document uploads, and friends challenges remain deferred.
 
 ## Requirements
 
@@ -263,7 +264,7 @@ authoring access is closed; taking/instruction responses never include answer ke
 Review access is granted only after that attempt has finalized.
 
 The schema adds `Quiz`, `QuizQuestion`, `QuizQuestionOption`, `Attempt`, and
-`AttemptAnswer`. Question-bank models remain deferred. PostgreSQL partial unique
+`AttemptAnswer`. Stage 4 adds separate bank models described below. PostgreSQL partial unique
 indexes prevent multiple active attempts and multiple correct options. Composite
 foreign keys prevent selecting another question's option or saving an answer to
 another quiz. SQL triggers freeze published content and finalized attempts/answers.
@@ -296,7 +297,7 @@ PostgreSQL integration tests now include practice ownership/validation, question
 editing/deletion, publication immutability, concurrent starts, autosave retries and
 conflicts, save/submit races, grading, duplicate submissions, expiry, result privacy,
 retakes, retry-incorrect drafts, and database constraints. `npm run test:integration`
-runs Stage 1–3 suites in the isolated schema. Frontend tests cover
+runs Stage 1–4 suites in the isolated schema. Frontend tests cover
 the editor, navigation, offline-save feedback/retry, resume, results, and history.
 
 ## Lecturer courses and official assessments (Stage 3)
@@ -406,7 +407,7 @@ concurrent-query deprecation warning from Prisma relation loading during tests.
 
 ## Production boundary and next stage
 
-This is a Stage 3 implementation, not a production launch. Email verification, password
+This is a Stage 4 implementation, not a production launch. Email verification, password
 recovery, profile editing, and multi-device session management are not implemented.
 Before launch, add the agreed email/recovery flow, retention cleanup for expired
 session rows, backup/restore procedures, monitoring, and deployment configuration.
@@ -417,5 +418,122 @@ serve `apps/web/dist` with SPA history fallback, and reverse-proxy `/api` to Exp
 on the same origin. Configure TLS, HTTPS `APP_ORIGIN`, production mode, and the exact
 proxy hop count. The API deliberately binds to loopback for this topology.
 
-Stage 4 requires separate approval. Question banks, AI, uploads, and challenges
+Stage 5 requires separate approval. AI, lecture-document uploads, and challenges
 remain outside the current implementation.
+
+## Reusable question banks and CSV import (Stage 4)
+
+Stop development servers, install the updated lockfile, generate the Prisma client,
+and apply the additive migration before restarting:
+
+```powershell
+npm ci
+npm run db:generate
+npm run db:deploy
+npm run dev
+```
+
+There are no new environment variables. `csv-parse` is the only added runtime
+dependency; the frontend uses the existing query, router and form components.
+
+Both students and lecturers (including pending lecturers) have **Question banks**
+in their navigation. Banks are private. An optional lecturer-owned course association
+is organizational only and never exposes the bank to enrolled students. The frontend
+course picker is available to approved lecturers with active courses. A bank associated
+with an archived course must be detached before changing its metadata.
+
+Create a bank with a title and optional description. Add questions with four distinct,
+nonempty options, one correct answer, optional explanation and topic, and difficulty
+EASY, MEDIUM or HARD. Question text, explanation and option lengths reuse quiz
+validation. Search matches question text or topic; separate difficulty/topic filters
+can be combined. Lists use 20 rows per page. Bank capacity is **1,000 questions,
+including archived questions**. Create a new bank when it is full.
+
+Questions can be edited, duplicated, archived, or moved/copied between owned active
+banks. Banks can be renamed, duplicated or archived. Archiving is permanent and
+read-only; it does not delete questions or affect quiz copies. Duplicating a bank
+copies only its active questions and clears its course association. Revision checks
+reject stale edits with 409. Cross-bank locks use sorted bank IDs.
+
+CSV workflow:
+
+1. Open a bank and choose **Import CSV**, then download the template.
+2. Save a UTF-8, comma-separated `.csv` file with these nine headers (order may vary):
+   Question, Option A, Option B, Option C, Option D, Correct Answer, Explanation,
+   Difficulty, Topic. Correct Answer accepts A/B/C/D; difficulty accepts
+   EASY/MEDIUM/HARD. Letter/difficulty case is normalized. Explanation and Topic
+   cells may be empty; the other cells are required. Quoted commas, escaped quotes,
+   multiline fields, UTF-8 BOM, LF and CRLF are supported.
+3. Select the file and click **Preview CSV**. The backend validates all records and
+   reports errors by logical row (the header is row 1; blank lines are ignored).
+   Malformed quoting/header/size/row-limit errors reject the whole file. A field-count
+   error is shown on that row. No questions are written during preview.
+4. Fix invalid rows and preview again, or explicitly check **Import only valid rows**.
+   Click **Confirm import** and approve the displayed count/destination.
+5. The resulting notice reports imported and skipped counts. Refreshing/retrying the
+   same confirmation does not duplicate questions. A new preview represents a new
+   import and can intentionally import the same content again.
+
+Limits: 1 MiB of CSV text, 200 question records, 12 preview/confirm requests per
+minute/IP, a 2 MiB JSON transport body, and a 15-minute signed preview. The token is
+bound to the user, destination bank and exact CSV digest; confirmation revalidates
+the content and current bank ownership/archive/capacity. Import and receipt writes
+share one PostgreSQL transaction. A changed file or expired token needs a new preview.
+No CSV files are stored on disk or in the database; only question data and a small
+import receipt are retained. The current download is a static, formula-escaped
+template; there is no user-data CSV export. Use `csvCell` at any future export boundary.
+
+All bank API paths use the authenticated `/api/v1/question-banks` prefix and the
+existing JSON/origin/CSRF contract for writes:
+
+| Method | Suffix | Purpose |
+| --- | --- | --- |
+| GET / POST | `/` | List/search owned banks, or create one |
+| GET / PUT | `/:bankId` | Read/update bank metadata |
+| POST | `/:bankId/archive` | Archive using `{revision}` |
+| POST | `/:bankId/duplicate` | Copy active questions into a new bank |
+| GET / POST | `/:bankId/questions` | Filter/page questions, or add one |
+| GET / PUT | `/:bankId/questions/:id` | Read/edit an owned question |
+| POST | `/:bankId/questions/:id/archive` | Archive using `{revision}` |
+| POST | `/:bankId/questions/:id/transfer` | `{targetBankId, action: COPY or MOVE, revision}` |
+| GET | `/csv-template` | Download the static CSV template |
+| POST | `/:bankId/import/preview` | Validate `{csv}` and issue a preview token |
+| POST | `/:bankId/import/confirm` | `{csv, token, confirmed: true, skipInvalid}` |
+| POST | `/selection` | Return copies of owned active questions selected by `{ids}` |
+
+Question payloads extend the existing quiz question with `difficulty` and `topic`.
+Question updates add `revision`; bank updates send title, description, nullable
+courseId and revision. Bank/question queries accept `page`, `search`, `archived`;
+question queries additionally accept `difficulty` and `topic`. Whole-quiz duplication
+uses `POST /api/v1/quizzes/:id/duplicate` or the lecturer-scoped
+`POST /api/v1/courses/:courseId/assessments/:id/duplicate`, both with `{}`.
+
+**Add from question bank** is available in both practice and assessment draft editors.
+Search/browse banks, select questions across banks/pages, and add up to the remaining
+50-question limit. The backend rechecks ownership and active status before returning
+copies. Added questions remain unsaved until **Save draft** or **Save and publish**.
+They can be edited or removed in the existing editor. No live question-bank reference
+is saved in a quiz, so later bank edits, moves and archives cannot affect grading or
+historical results. Bank difficulty/topic organize the library; the Stage 1–3 quiz
+snapshot contract remains unchanged.
+
+**Duplicate as draft** appears on practice quiz rows and lecturer assessment rows.
+It copies questions/options into fresh records and preserves the source quiz/results.
+Assessment copies remain in the original owned course and require a new closing
+schedule before publication. Copies have no attempts or results.
+
+Database additions are `QuestionBank` (owner, optional course, metadata, archive,
+revision), `Question` (bank, four-option PostgreSQL array, correct index, explanation,
+topic, difficulty, archive, revision), `Difficulty`, and `CsvImportReceipt`. Foreign
+keys, owner/course guards, question constraints and list indexes are included in
+`202611040004_question_banks`. Existing quiz, attempt, result and course rows are not
+rewritten by this migration. Apply migrations to your configured development database
+using `db:deploy`; automated verification uses isolated databases only.
+
+Manual regression check: create and edit a question; import the template alongside
+one invalid row and explicitly skip it; duplicate and move/copy a question; select
+questions into a practice quiz, publish and submit; change the bank question and
+confirm the old result stays unchanged. Repeat selection in an approved lecturer's
+assessment draft, publish, enroll a student, submit and verify review remains held
+until closure. Check another account cannot open the private bank. Archive the bank
+and confirm it disappears from active selection while prior quizzes still work.

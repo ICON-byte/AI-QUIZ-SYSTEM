@@ -60,6 +60,7 @@ export function Pagination({
   return (
     <nav className="pagination" aria-label="Page navigation">
       <button
+        type="button"
         className="button secondary"
         disabled={page <= 1}
         onClick={() => setPage(page - 1)}
@@ -70,6 +71,7 @@ export function Pagination({
         {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} of {total}
       </span>
       <button
+        type="button"
         className="button secondary"
         disabled={page * 20 >= total}
         onClick={() => setPage(page + 1)}

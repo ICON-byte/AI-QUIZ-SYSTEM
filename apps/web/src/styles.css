@@ -4,6 +4,44 @@
   --font-sans: "Instrument Sans Variable", "Instrument Sans", system-ui, sans-serif;
 }
 
+/* Question banks share the existing editorial workspace and form controls. */
+.bank-form { max-width: 800px; }
+.bank-filters { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; margin: 24px 0 16px; }
+.bank-filters .field { flex: 1 1 180px; margin: 0; }
+.field select { width: 100%; min-height: 46px; border: 1px solid #cbd2ce; background: white; color: var(--text); padding: 10px 12px; border-radius: 8px; font: inherit; font-weight: 400; }
+.check-label { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; }
+.check-label input, .picker-question input { accent-color: var(--accent); width: 18px; height: 18px; flex: 0 0 18px; }
+.bank-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin: 16px 0; }
+.text-action { min-height: 44px; background: transparent; border: 0; padding: 8px 0; font: inherit; text-align: left; color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
+.bank-question-list { display: grid; gap: 16px; }
+.bank-question { overflow-wrap: anywhere; }
+.bank-question > * + * { margin-top: 12px; }
+.bank-question h2 { font-size: 16px; }
+.bank-question summary { cursor: pointer; min-height: 44px; display: list-item; align-content: center; }
+.bank-options { padding-left: 28px; margin: 12px 0; }
+.bank-options li { padding: 5px 0 5px 8px; }
+.bank-notice { padding: 16px 20px; background: #edf1ee; border-radius: 8px; }
+.bank-transfer, .question-picker, .csv-preview { margin: 24px 0; }
+.bank-chooser { max-width: 600px; margin: 20px 0; }
+.picker-questions { margin: 16px 0; }
+.picker-question { display: flex; gap: 14px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--border); min-height: 64px; cursor: pointer; overflow-wrap: anywhere; }
+.picker-question > span { min-width: 0; }
+.picker-question .field-hint { display: block; }
+.question-picker .bank-filters, .csv-preview > .field-hint { margin-bottom: 20px; }
+.question-picker .section-heading { align-items: start; }
+.csv-preview .check-label { margin-top: 20px; }
+#csv-limits { font-size: 13px; }
+@media (max-width: 640px) {
+  .bank-filters { gap: 12px; }
+  .bank-filters .field:first-child { flex-basis: 100%; }
+  .bank-filters .field { flex-basis: 120px; }
+  .bank-tools { gap: 4px 20px; }
+  .bank-form input[type="file"] { width: 100%; }
+  .question-picker .section-heading { flex-wrap: wrap; }
+  .question-picker .editor-actions { align-items: stretch; }
+  .bank-question { padding: 20px; }
+}
+
 :root {
   font-family: var(--font-sans);
   color: #1f201d;

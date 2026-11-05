@@ -123,3 +123,45 @@ than inventing assessments; this accounts for the inspector's whitespace warning
 Report labels were increased to 13px after its first inspection.
 The final report inspection passed with zero failures and zero warnings at all
 three widths; report/roster tables keep horizontal scrolling inside their frame.
+
+## Stage 4: reusable questions
+
+The existing Editorial greeting direction (seed 80601035), Instrument Sans and
+sage/neutral workspace remain in use. New screens answer these questions:
+
+- Question banks: which collection do I need? Title, description and actual active
+  question count lead to an owned collection. Search and archive views stay simple.
+- Bank details: which question can I reuse? Question text leads, followed by topic
+  and difficulty. Answers/explanations expand on demand; edit/copy/archive actions
+  stay attached to the question. A bank's private state is explicit.
+- Question editor: what is the question and its one correct answer? The existing
+  four-option form pattern is followed by topic and difficulty controls.
+- CSV import: which rows are safe to add? The native file chooser and visible
+  limits precede a record-by-record preview with readable field errors. Invalid
+  rows require an explicit skip choice; confirmation names the destination/count.
+- Quiz selection: which saved questions belong in this draft? The shared selector
+  browses active owned banks and retains selected IDs across pages/banks. It shows
+  remaining capacity and adds independent copies to the same draft editor.
+
+All new screens include loading, empty, validation and connection-error states.
+Inputs have labels; file constraints use aria-describedby; native checkboxes,
+selects, disclosure controls and focus styles preserve keyboard access. Text
+search requests are debounced while input updates immediately. No credentials,
+files or question selections are persisted in browser storage.
+
+Real Chrome verification used independent student/lecturer profiles and disposable
+biology fixtures. It covered manual creation/editing, question duplicate/archive,
+cross-bank copy, CSV upload/preview/errors/explicit import, bank duplicate/archive,
+practice selection/publication/graded submission, published snapshot independence,
+lecturer course association, assessment selection/publication/submission with held
+review, and whole-assessment duplication. Captures at 1440, 768 and 390 pixels had
+no page overflow or uncaught exceptions. The bank screen inspector passed at all
+three widths. Its single desktop whitespace warning reflects the full-width list
+with short question text and collapsed answer details; that space is retained for
+long academic questions. Source design lint has no failures; its only warning is
+the existing countdown's zero-padding.
+
+The CSV import screen also passed the inspector at all three widths. Its file
+guidance was increased to 13px after the initial inspection; the final run has
+only a desktop whitespace warning because the file chooser has no preview until
+a file is selected. The workspace intentionally keeps its full-height frame.

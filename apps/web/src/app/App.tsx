@@ -18,6 +18,11 @@ import { CourseDetails } from '../features/courses/CourseDetails';
 import { CourseRoster } from '../features/courses/CourseRoster';
 import { JoinCourse } from '../features/courses/JoinCourse';
 import { AssessmentReport } from '../features/courses/AssessmentReport';
+import { BankList } from '../features/banks/BankList';
+import { BankEditor } from '../features/banks/BankEditor';
+import { BankDetails } from '../features/banks/BankDetails';
+import { QuestionEditor } from '../features/banks/QuestionEditor';
+import { CsvImport } from '../features/banks/CsvImport';
 
 export function App() {
   return <Routes>
@@ -28,6 +33,13 @@ export function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/account" element={<Account />} />
       <Route path="/verification" element={<Verification />} />
+      <Route path="/banks" element={<BankList />} />
+      <Route path="/banks/new" element={<BankEditor />} />
+      <Route path="/banks/:bankId" element={<BankDetails />} />
+      <Route path="/banks/:bankId/edit" element={<BankEditor />} />
+      <Route path="/banks/:bankId/questions/new" element={<QuestionEditor />} />
+      <Route path="/banks/:bankId/questions/:questionId/edit" element={<QuestionEditor />} />
+      <Route path="/banks/:bankId/import" element={<CsvImport />} />
       <Route element={<AcademicArea />}>
         <Route path="/courses" element={<CourseList />} />
         <Route path="/courses/:courseId" element={<CourseDetails />} />

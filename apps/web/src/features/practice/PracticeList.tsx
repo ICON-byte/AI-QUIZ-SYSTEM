@@ -5,6 +5,7 @@ import { api } from '../../lib/api';
 import { Pagination, PracticeError } from './PracticeUi';
 import { timerLabel } from './format';
 import type { QuizSummary } from './types';
+import { DuplicateQuiz } from '../banks/DuplicateQuiz';
 
 export function PracticeList() {
   const [page, setPage] = useState(1);
@@ -76,16 +77,19 @@ export function PracticeList() {
                       {timerLabel(quiz.timeLimitSeconds)}
                     </p>
                   </div>
-                  <Link
-                    className="button secondary"
-                    to={
-                      quiz.status === 'DRAFT'
-                        ? `/practice/${quiz.id}/edit`
-                        : `/practice/${quiz.id}`
-                    }
-                  >
-                    {quiz.status === 'DRAFT' ? 'Edit draft' : 'Open quiz'} ↗
-                  </Link>
+                  <div className="button-group">
+                    <DuplicateQuiz id={quiz.id} />
+                    <Link
+                      className="button secondary"
+                      to={
+                        quiz.status === 'DRAFT'
+                          ? `/practice/${quiz.id}/edit`
+                          : `/practice/${quiz.id}`
+                      }
+                    >
+                      {quiz.status === 'DRAFT' ? 'Edit draft' : 'Open quiz'} ↗
+                    </Link>
+                  </div>
                 </article>
               ))}
             </div>

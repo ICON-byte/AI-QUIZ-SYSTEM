@@ -192,6 +192,10 @@ export function courseRoutes(db: Database, config: Config) {
       ),
     ),
   );
+  router.post('/courses/:courseId/assessments/:id/duplicate', lecturer, async (req, res) => {
+    emptySchema.parse(req.body);
+    res.status(201).json(await createQuizService(db, idSchema.parse(req.params.courseId)).duplicate(req.auth!.user.id, idSchema.parse(req.params.id)));
+  });
   router.post(
     '/courses/:courseId/assessments/:id/publish',
     lecturer,
