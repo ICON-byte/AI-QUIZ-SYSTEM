@@ -7,6 +7,7 @@ manual personal practice, lecturer-owned courses, enrollment, official assessmen
 a shared attempt engine, private question banks, and CSV import.
 Stage 5 adds AI question generation from topics and reviewed PDF, DOCX and TXT text.
 Stage 6 adds private, asynchronous student challenges and leaderboards.
+Stage 6.5 adds the public landing page and an interactive, prepared quiz example.
 
 ## Requirements
 
@@ -978,3 +979,69 @@ with the existing quiz/student/attempt-number uniqueness constraint.
 All routine tests and browser workflows inject mocked AI responses. Do not make
 live Gemini calls during development verification without explicit approval.
 Stage 7 requires separate approval.
+
+## Public landing page (Stage 6.5)
+
+Open `/` for The Annotated Page: a dark editorial introduction with light academic
+surfaces, the existing AI Quiz mark and locally hosted Instrument Sans. `/dashboard`
+remains the authenticated application. The home page stays available to signed-in
+users and offers Open workspace. Login/registration, lecturer verification, age
+eligibility and challenge invitation return paths retain their existing rules.
+
+The source-to-question demonstration is entirely local and clearly labelled as
+prepared content. Visitors inspect a sample passage, edit question wording, select
+an answer and read an explanation. It accepts no documents, sends no AI requests,
+stores no attempt and uses no localStorage/sessionStorage. Other product fragments
+have explicit example labels; sample names and scores do not represent real users.
+Actual AI generation still requires authentication, review and privacy consent.
+
+Implementation lives in `apps/web/src/features/landing`. Workspace routes are loaded
+in a separate JavaScript chunk from `app/WorkspaceRoutes.tsx`. Session errors do not
+replace the public content with an error screen. CSS is scoped to the landing
+feature; authenticated screens retain their existing design system. No backend,
+database, dependency or environment-variable changes are required.
+
+### Manual verification
+
+1. Run `npm run dev`, then open `http://localhost:5173/` while signed out.
+2. Use Try a sample question, inspect its source, edit its wording, choose an answer
+   and check the explanation. Return to review and try the other answer outcome.
+3. Test the mobile menu using a keyboard, including Escape and section navigation.
+   Enable the operating system's reduced-motion setting and repeat the interaction.
+4. Sign in as a student or lecturer. Visit `/` again and use Open workspace. The
+   workspace logo should lead to `/dashboard`; the authentication logo leads home.
+5. Verify a challenge invitation through login/registration and an explicit join.
+6. Stop the API while keeping Vite running: the public page and sample should remain
+   usable. Login and real application operations still require a functioning API.
+
+Run `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` and the existing
+PostgreSQL integration suite for regression verification. Frontend test setup warms
+Vite's lazy workspace module before assertion timers, without replacing route guards.
+Landing tests cover pending/unavailable sessions, both signed-in roles, source
+inspection, editing, correct/incorrect feedback, menu focus and privacy disclosure.
+
+The public page remains a client-rendered Vite application. Metadata is provided,
+but initial HTML prerendering, a deployment-specific canonical URL and a social
+preview image remain deployment considerations. No analytics or third-party media
+are loaded. Screenshots and local browser audit reports live under the ignored
+`.taste-skill/landing/` directory. Stage 7 requires separate approval.
+
+Verification on 5 November 2026: 56 API unit tests, 66 frontend tests and 125
+PostgreSQL integration tests passed. TypeScript, lint and both production builds
+passed. The landing browser checks covered local question review/answer feedback,
+API unavailability, keyboard navigation, reduced motion and reflow from 320 to
+1440px. An axe-core audit found no WCAG A/AA violations across seven desktop/mobile
+states; layered surfaces and decorative arrows required manual contrast review.
+This does not replace assistive-technology testing or a full accessibility audit.
+
+The initial JavaScript bundle is approximately 101.53kB gzip; workspace routes add
+26.98kB gzip only when visited. A single cold foreground Chromium run at 390px,
+4x CPU slowdown, 100ms latency and 400000 bytes/s measured LCP 4.1s and negligible
+layout shift. This is a local synthetic observation, not a production guarantee;
+loading performance remains a deployment measurement and optimization concern.
+
+Mocked Chromium regressions also passed for practice and assessment authoring,
+grading, held answer review, PDF/DOCX/TXT generation recovery, bank acceptance,
+challenge invitations, resumption, manual/scheduled closure and private rankings.
+All three quiz modes were exercised against a disposable PostgreSQL cluster;
+no live Gemini requests or developer-database resets were used.

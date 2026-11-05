@@ -213,3 +213,21 @@
   general DTOs. Only creators retrieve invitation plaintext. Keep the key stable.
 - Invitation links put codes in URL fragments. Post-auth returns allow only the
   exact internal invitation route; enrollment always requires explicit POST.
+
+## Public landing page (Stage 6.5)
+
+- Stage 6.5 is authorized. `/` is public; `/dashboard` remains authenticated.
+  Keep the landing page readable during session loading and API outages. Signed-in
+  visitors get an Open workspace action without a forced redirect from `/`.
+- Preserve the restricted invitation return path, registration eligibility and role
+  checks. Workspace branding links to `/dashboard`; public/auth branding links home.
+- Landing styles/tokens are scoped under the landing feature. Retain the existing
+  Instrument Sans/book identity; do not retheme authenticated screens.
+- Public demonstrations use explicitly labelled, authored sample data only. They
+  must never call Gemini, accept private uploads, save attempts or use browser storage.
+  Never imply that examples are real users, adoption statistics or verified AI output.
+- Load workspace routes in a separate chunk. Keep public rendering independent of
+  backend availability and preserve Suspense loading feedback for private routes.
+- Verify production screenshots at desktop, tablet and phone sizes, keyboard use,
+  reduced motion and all three quiz modes when changing routing. No Stage 7 work
+  or automatic commits/pushes are authorized by the landing-page task.

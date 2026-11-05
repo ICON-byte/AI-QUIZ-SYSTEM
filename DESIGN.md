@@ -31,8 +31,9 @@ The primary questions are:
 - Navigation folds into an accessible menu below 900px; the authentication layout
   stacks at the same width. Content and account identifiers wrap on small screens.
 - The desktop canvas supports a maximum 1100px content grid with 16px gutters.
-- Application data comes from the current authenticated account. No sample data
-  ships in the product; test accounts exist only in disposable verification data.
+- Authenticated application data comes from the current account; test accounts
+  exist only in disposable verification data. Stage 6.5 public examples are
+  explicitly labelled and remain separate from account data.
 
 ## Verification notes
 
@@ -230,3 +231,53 @@ Mocked Chromium workflows verified challenge authoring, invitations, explicit jo
 resumption, held answer review, manual/scheduled closure and private leaderboards.
 Desktop (1440px), tablet (768px) and phone (390px) captures were checked; the
 responsive inspection found no page-level horizontal overflow.
+
+## Stage 6.5: The Annotated Page
+
+The public route uses the approved dark editorial direction, with deep green-black
+`#101916`, raised green `#1a2722`, light ink `#f4f6f3`, muted ink `#b6c2ba`, sage
+`#bed8c5`, light paper field `#e8eee8` and white document surfaces. On light surfaces,
+ink is `#1f201d`, secondary text `#4c5951` and the existing accent `#1b6e66`.
+Instrument Sans and the existing book symbol connect the introduction to the app.
+All new rules are scoped to landing components; authenticated screens stay intact.
+
+The design-taste direction is The printed annual (editorial-report), seed
+1718397743. Its photograph-dependent CTA was redrawn to The idea again, inverted:
+there are no owned photographs or spokesperson assets, and the approved subject is
+its source/question interface. The user-approved compact CTA, native FAQ disclosure
+and restrained motion take precedence over the library's oversized scene recipes.
+
+On this page, the reviewed source passage becomes the recurring editorial object:
+a paper in the hero, an inspectable excerpt in the demo, a practice explanation and
+a question kept in a private bank. Product fragments contain complete, authored
+examples rather than decorative charts. Examples are restricted to the public page
+and explicitly labelled; authenticated account screens never receive sample data.
+
+The public layout uses oversized two-line type, an asymmetric desktop opening,
+layered paper/question surfaces, a full-width review spread, a light practice
+chapter, assessment margin notes, a joined invitation/leaderboard example and a
+wide bank selection. Mobile stacks content in reading order. Tablet uses adjacent
+readable sheets rather than obscuring the source with the desktop overlap.
+
+The local demo permits source inspection, wording edits and a four-option answer.
+The correct answer and explanation are prepared public content. Editing changes
+wording only, with an explicit notice that the example's answer key remains fixed.
+It creates no job or attempt and never sends source data to a provider. Stage changes
+move focus to the question heading; answer feedback uses a polite status region.
+
+Motion consists of short paper/type arrivals, one-time section entrances and
+immediate control feedback. Content is visible by default; an unavailable observer
+cannot hide it. Reduced motion removes animations while preserving the same content
+and controls. No scroll hijacking, video, external font requests or motion library
+is introduced. Interface examples provide the imagery for this software product.
+
+Visual refinement: the first browser pass identified overlapping tablet text and
+an unnecessary low-contrast hero annotation. The second composition separated the
+sheets, removed that annotation, shortened the challenge heading and changed the
+bank section into a wide selection spread. The final refinement strengthened muted
+text on light paper, consolidated the editorial type scale and replaced typographic
+checkmarks with the same restrained vector selection marks used by the UI language.
+
+Verification evidence and the final visual critique are recorded under the ignored
+`.taste-skill/landing/` folder. Public-page snapshots are captured at 1440, 768 and
+390px; interaction/reflow checks also cover 320, 601 and 1024px.
