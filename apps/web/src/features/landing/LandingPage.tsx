@@ -42,8 +42,10 @@ export function LandingPage() {
       <a className="lp-skip" href="#landing-main">
         Skip to content
       </a>
-      <div className="lp-shell">
-        <LandingNavigation signedIn={signedIn} />
+      <div className="lp-header-frame">
+        <div className="lp-shell">
+          <LandingNavigation signedIn={signedIn} />
+        </div>
       </div>
       <main id="landing-main" tabIndex={-1}>
         <section className="lp-hero lp-shell" aria-labelledby="hero-title">
