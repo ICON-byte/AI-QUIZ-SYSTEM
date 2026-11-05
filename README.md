@@ -1,11 +1,12 @@
 # AI-Powered Online Quiz System
 
 A React and Express application for academic assessments and personal learning.
-**Stages 1–4 are implemented:** project foundation, student/lecturer accounts,
-secure sessions, role authorization, operator-managed lecturer verification, and
+**Stages 1–5 are implemented:** project foundation, student/lecturer accounts,
+secure sessions, role authorization, operator-managed lecturer verification,
 manual personal practice, lecturer-owned courses, enrollment, official assessments,
-and a reusable attempt engine, private reusable question banks, and CSV import.
-AI, lecture-document uploads, and friends challenges remain deferred.
+a shared attempt engine, private question banks, and CSV import.
+Stage 5 adds AI question generation from topics and reviewed PDF, DOCX and TXT text.
+Friends challenges remain deferred.
 
 ## Requirements
 
@@ -71,7 +72,8 @@ The server fails safely if required values are absent or invalid.
 | `TEST_DATABASE_URL` | Optional, tests only | Dedicated PostgreSQL database with a name ending `_test` |
 | `PG_BIN` | Optional, tests only | Directory containing `initdb` and `pg_ctl` if not on PATH |
 
-No Gemini key is needed for Stage 1. Never put backend secrets in `VITE_*` variables.
+No Gemini key is needed for manual features. Stage 5 AI configuration is optional.
+Never put backend secrets in `VITE_*` variables.
 
 ## Lecturer verification
 
@@ -297,7 +299,7 @@ PostgreSQL integration tests now include practice ownership/validation, question
 editing/deletion, publication immutability, concurrent starts, autosave retries and
 conflicts, save/submit races, grading, duplicate submissions, expiry, result privacy,
 retakes, retry-incorrect drafts, and database constraints. `npm run test:integration`
-runs Stage 1–4 suites in the isolated schema. Frontend tests cover
+runs Stage 1–5 suites in the isolated schema. Frontend tests cover
 the editor, navigation, offline-save feedback/retry, resume, results, and history.
 
 ## Lecturer courses and official assessments (Stage 3)
@@ -407,7 +409,7 @@ concurrent-query deprecation warning from Prisma relation loading during tests.
 
 ## Production boundary and next stage
 
-This is a Stage 4 implementation, not a production launch. Email verification, password
+This is a Stage 5 implementation, not a production launch. Email verification, password
 recovery, profile editing, and multi-device session management are not implemented.
 Before launch, add the agreed email/recovery flow, retention cleanup for expired
 session rows, backup/restore procedures, monitoring, and deployment configuration.
@@ -418,8 +420,8 @@ serve `apps/web/dist` with SPA history fallback, and reverse-proxy `/api` to Exp
 on the same origin. Configure TLS, HTTPS `APP_ORIGIN`, production mode, and the exact
 proxy hop count. The API deliberately binds to loopback for this topology.
 
-Stage 5 requires separate approval. AI, lecture-document uploads, and challenges
-remain outside the current implementation.
+Stage 6 requires separate approval. Friends challenges remain outside the current
+implementation.
 
 ## Reusable question banks and CSV import (Stage 4)
 
@@ -537,3 +539,266 @@ confirm the old result stays unchanged. Repeat selection in an approved lecturer
 assessment draft, publish, enroll a student, submit and verify review remains held
 until closure. Check another account cannot open the private bank. Archive the bank
 and confirm it disappears from active selection while prior quizzes still work.
+
+## AI question generation (Stage 5)
+
+Initial audience: university students and lecturers aged **18+ in Nigeria**.
+Registration now requires an explicit age confirmation and stores only its timestamp,
+not a date of birth. Existing accounts keep their current manual features and can
+confirm eligibility on the AI page. This is self-attestation, not identity/age
+verification. There is no geolocation infrastructure; international expansion
+requires reviewing the provider's regional/age/privacy conditions before rollout.
+
+Stop development servers before installing and migrating:
+
+```powershell
+npm ci
+npm run db:generate
+npm run db:deploy
+npm run dev
+```
+
+The migration adds a nullable `User.adultConfirmedAt` and three small AI tables:
+`AiGeneration` for jobs/temporary review payloads, `AiUsageBucket` for daily provider
+accounting, and `AiDispatch` for a shared dispatch lease/pacing timestamp. The separate
+singleton lease prevents multiple worker instances from overlapping normal dispatch
+or bypassing call pacing. Existing quiz questions, attempts, grades, banks and course
+records are preserved. Accepted AI content uses the existing bank Question model.
+
+### Gemini configuration
+
+1. Open [Google AI Studio's API keys page](https://aistudio.google.com/api-keys),
+   choose/create a Google project, and create an API key. Follow any account/project
+   verification Google requires. Keep the key private; do not paste it into Git,
+   browser code, screenshots, or support logs.
+2. In that project's AI Studio console, verify the **exact model ID**, support for
+   structured text output, free-tier access, and current request/token limits.
+   Google's current model/pricing documentation lists `gemini-3.5-flash-lite` with
+   structured output and a free tier, but documentation does not prove access or
+   remaining quota for an individual project. Check the actual project before
+   choosing it. [Model details](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite),
+   [pricing](https://aistudio.google.com/docs/pricing#gemini-3.5-flash-lite),
+   [project limits](https://aistudio.google.com/rate-limit).
+3. Set `GEMINI_API_KEY` and your verified `GEMINI_MODEL` in `apps/api/.env`, then
+   restart the API. Neither variable has a usable default; AI stays unavailable
+   if either is blank. No other feature requires a Gemini key.
+4. The application makes no startup probe or automatic paid/model fallback. The
+   first deliberate generation contacts Gemini. Unavailable models, unsupported
+   requests, invalid credentials and exhausted quotas fail with sanitized messages.
+   A configured capability means settings exist; it is not a claim of live provider
+   availability or verified billing status. Model choice does not control billing:
+   verify the Google project's billing/quota configuration separately.
+
+The implementation uses Google's maintained `@google/genai` SDK, with stateless
+structured-JSON generation and local Zod validation. SDK retries and automatic
+continuation are disabled; the worker owns the explicit two-call bound. There are
+no web-search, code-execution, file-search, function-calling or other model tools.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | blank | Backend-only Google API key |
+| `GEMINI_MODEL` | blank | Exact operator-verified model ID |
+| `AI_DAILY_USER_LIMIT` | `5` | Successful generations/user/UTC day |
+| `AI_DAILY_PROJECT_CALL_LIMIT` | `20` | Actual application provider calls/UTC day, including failures/retries |
+| `AI_CALL_INTERVAL_SECONDS` | `30` | Minimum gap between provider-call starts |
+| `AI_JOB_TIMEOUT_SECONDS` | `120` | Overall queued/running job deadline, including retry waits |
+| `AI_MAX_OUTPUT_TOKENS` | `8192` | Per-call output-token bound |
+| `AI_DOCUMENT_MAX_BYTES` | `5242880` | Maximum upload bytes (5 MiB) |
+| `AI_DOCUMENT_MAX_CHARACTERS` | `40000` | Maximum reviewed/extracted characters |
+| `AI_DOCUMENT_MAX_PAGES` | `100` | Maximum PDF pages |
+| `AI_EXTRACTION_TIMEOUT_SECONDS` | `10` | Child-process extraction timeout |
+
+App counters reset at midnight UTC (01:00 in Nigeria); the UI also shows the local
+reset timestamp. Google applies its own project/model limits, and its daily reset
+need not align with ours. Other applications or keys using the Google project are
+outside this app's accounting. These limits bound this application's calls, not a
+guaranteed provider quota, paid spending amount, or token budget across other apps.
+
+### Generation and review workflow
+
+- Open **Generate questions** from navigation, an active bank, or either draft quiz
+  editor's **Generate with AI** control. Pending lecturers can generate private
+  questions; official assessment authoring still requires lecturer verification.
+- Read the privacy notice and explicitly confirm that the material is non-sensitive.
+  Enter a topic, choose difficulty, and select 5, 10, 15, 20 or 30 questions.
+- For documents, select a PDF, DOCX or UTF-8 TXT and choose **Extract text for review**.
+  Inspect/edit each page/paragraph, remove unnecessary personal information, and
+  confirm text review. Only this reviewed text is submitted to Gemini. Original
+  binary files, filenames, account details and other application records are not
+  sent to the model. DOCX/TXT references use extracted paragraph numbers; PDF uses
+  page numbers. Complex reading order/tables may need manual cleanup.
+- Start generation. The API returns a job ID and the browser displays queued/running
+  status, with a fixed deadline. The standalone URL includes the ID for reopening
+  the review. Active jobs can be resumed from the AI page. No fake percentage is shown.
+- Review answers carefully, edit any field, change the correct answer, uncheck or
+  remove questions. Save selected questions to an existing bank or create a new bank.
+  In a quiz editor, **Add to quiz draft** copies reviewed fields into the existing
+  editor; save/publish remains a separate, explicit action.
+- Exact supporting quotes are checked against submitted document text. Source labels
+  and short quotes are included in the editable explanation so accepted copies can
+  retain them. Matching text and valid JSON do not establish factual correctness.
+  Lecturers remain responsible for reviewing official assessment content.
+- **Regenerate questions** creates a new job/idempotency key and consumes another
+  user allowance only if successful. After a page reload, re-enter the topic or
+  upload/review the source again; completed jobs intentionally retain no full source.
+- On a lost connection, **Retry the same generation request** reuses its original
+  identifier/content. Do not create a new generation just to recover a response.
+  Bank acceptance is also idempotent; edits after an already-saved acceptance should
+  be made in the bank, or copied using existing bank functionality.
+
+### Privacy, failure handling and retention
+
+The free integration is for **non-sensitive educational material only**. Users must
+not knowingly submit confidential examination materials, private student data or
+other sensitive content. Both frontend and backend require confirmation; document
+generation additionally requires confirmation that the extracted text was reviewed.
+These are user attestations, not an automatic sensitive-data detector or redactor.
+
+Google's unpaid-service terms allow input/output use for product improvement and
+human review; deleting data in this app does not promise deletion from Google.
+Read [Google's provider terms](https://aistudio.google.com/docs/terms) before use.
+
+Uploads stay transiently in memory and are never publicly served or stored on disk
+or in PostgreSQL. Text extraction runs in a child process with a 256 MiB V8 heap
+bound and a hard timeout. DOCX processing checks at most 1,000 ZIP entries and a
+20 MiB cumulative expanded-content limit before Mammoth parsing. No external
+document resources are requested. The heap bound is not a total OS memory sandbox;
+process/native memory still requires sensible deployment RAM limits.
+
+Queued/running jobs retain reviewed text only until completion, failure, deletion,
+or deadline cleanup. All terminal transitions clear source input. Generated review
+payloads expire after 24 hours; the API denies expired review even before cleanup.
+Users can delete job payloads earlier. Minimal ownership/idempotency/accounting
+metadata is purged after 30 days. Bank questions/explanations explicitly accepted
+by the owner remain normal bank data. Topic/source fields kept in the current
+browser tab support regeneration and can be cleared; they are never stored in
+localStorage/sessionStorage and are cleared when deleting that generation's data.
+
+Pending jobs reserve one user slot. Successful validated output charges it; extraction
+failures, invalid output, refusals, provider failures and timeouts do not charge the
+user allowance. Actual provider calls always count against the app project budget.
+Eligible response-validation failures, empty/truncated responses and transient HTTP 5xx failures share at most one recovery call with bounded waits. HTTP 429 quotas, invalid credentials, unavailable models, blocked content and other permanent failures are never retried. Ambiguous
+connection failures/timeouts and crashed RUNNING jobs are not blindly replayed:
+Google may already have processed/charged them. Exactly-once provider execution
+cannot be guaranteed over the network. User retries remain idempotent at the job
+layer. A short request limiter also bounds creation/extraction attempts.
+
+### Hosting and testing
+
+Use an **always-on Node 24 process** with PostgreSQL, child-process support and
+sufficient memory for bounded parsing. The worker runs within the API, polls every
+two seconds, and aborts its active call during graceful shutdown. No hosting vendor,
+Redis, separate microservice or persistent file volume is required. Sleeping or
+serverless runtimes are not supported by this execution model without a future
+worker arrangement. Keep proxy body/time limits consistent with uploads and the
+extraction timeout. Pending jobs can expire during prolonged downtime; stale work
+fails without resending source material. Retention cleanup requires the API worker
+to be running; on-read expiry still denies expired data after restart.
+
+Routine tests mock Gemini and make **zero real provider requests**:
+
+```powershell
+npm test
+npm run test:integration
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Tests cover validation, PDF/DOCX/TXT extraction, invalid/bounded uploads, provider
+output/errors, missing configuration, age/privacy eligibility, idempotency, user/project
+quota races, worker claims/retries/deadlines, source/result deletion, private review,
+bank acceptance and both shared quiz editors. PostgreSQL tests use disposable schemas
+or clusters. Real browser validation uses an injected provider in an ignored local
+harness, never a production mock-mode switch or a live API key.
+
+Known limits: no OCR, legacy DOC, password-protected documents, automatic PII
+redaction, semantic duplicate detection, automatic factual verification, per-question
+regeneration, or cross-device persistence of unsaved review edits. If a document
+exceeds limits, split it; source is never silently truncated. Thirty questions may
+need a narrower topic or more source text. The initial service is university-focused,
+18+, Nigeria-only in product scope; regional expansion needs a separate review.
+
+AI endpoints use `/api/v1/ai`, authenticated cookies, explicit DTOs, and the existing
+origin/CSRF checks. Only the extraction endpoint accepts multipart; other writes
+remain JSON with a scoped 512 KiB parser limit.
+
+| Method | Suffix | Purpose |
+| --- | --- | --- |
+| GET | `/capabilities` | Configuration state, eligibility, allowance, limits and active job |
+| POST | `/eligibility` | Existing-account confirmation `{ageConfirmed: true}` |
+| POST | `/documents/extract` | One `document` file and `nonSensitiveConfirmed=true` form field |
+| POST | `/generations` | Reserve/create a job; returns 202 and its status |
+| GET | `/generations/:id` | Read owned status/result, enforcing deadline/review expiry |
+| POST | `/generations/:id/review` | Validate edited selected questions before adding to a quiz |
+| POST | `/generations/:id/accept` | Atomically save selected questions to an owned/new bank |
+| POST | `/generations/:id/discard` | Purge source/review payloads; retain accounting metadata |
+
+Generation input is `{idempotencyKey, kind, topic, segments, difficulty, count,
+nonSensitiveConfirmed, textReviewed}`. Topic requests use `kind: TOPIC` and empty
+segments. Document requests use `kind: DOCUMENT`, reviewed `{label,text}` segments
+and `textReviewed: true`. Acceptance sends edited `questions` plus either `bankId`
+or `newBank: {title, description, courseId}`. Each job has one idempotent bank
+acceptance; bank capacity/ownership checks and receipt writes share its transaction.
+
+
+### Generation reliability and live troubleshooting
+
+Apply the additive `202611050006_ai_reliability` migration with `npm run db:deploy`
+and restart the backend after updating. No new environment variables are required.
+The existing `GEMINI_API_KEY`, `GEMINI_MODEL`, `AI_MAX_OUTPUT_TOKENS` and job/call
+limits continue to apply. The SDK performs one HTTP attempt per reserved call;
+all validation and transient recovery shares the existing **two-call maximum**,
+project pacing, deadline and daily call budget. Only a valid final question set
+uses the user's successful-generation allowance.
+
+The provider schema now requests exactly the selected count. Server validation
+still requires four distinct options, a zero-based answer, an explanation, the
+requested difficulty, unique prompts and verified document references. Only
+surrounding whitespace, difficulty letter case and explicit A-D answer labels are
+normalized. Numeric strings, missing explanations and unsupported citations are
+rejected; questions are never silently dropped or invented to repair a set.
+
+Owned job diagnostics contain call number, safe failure category/field paths,
+allowlisted finish reason and available input/output/total token counts **per
+call**. Missing token counts mean Google did not supply them; totals may include
+provider reasoning tokens. Diagnostics never contain prompts, extracted text,
+raw AI responses, provider exception messages, API keys or invalid field values.
+No private provider content is logged. Minimal diagnostics follow the existing
+30-day job retention and are cleared on explicit deletion.
+
+For resumption, an owner-only summary retains topic (or a generic document label),
+source kind, quantity and difficulty for 24 hours from creation. It never retains
+lecture text or filenames. Explicit deletion clears it. Full reviewed source input
+is still erased at every terminal transition. The page offers active/recent job
+resumption, restores settings, and shows actual queued, pacing, calling or recovery
+state plus elapsed time. Document regeneration after returning requires re-upload
+and review; unsaved edited questions are not persisted across devices.
+
+To perform a **fresh live test yourself** after configuring an API key and a model
+available to your Google project:
+
+1. Run `npm run db:generate`, `npm run db:deploy`, then `npm run dev` at the root.
+2. Open `http://localhost:5173`, sign in, and open Generate questions. Use a new
+   non-sensitive topic such as ?Cell membranes and passive transport?, five
+   MEDIUM questions, and explicitly confirm the privacy notice.
+3. Choose Generate questions (or Regenerate questions for a new request). This
+   makes a real Google request and may make one eligible recovery call. An old
+   failed job is historical and will not re-run on refresh.
+4. Check the result and expand Generation diagnostics. Record the request ID,
+   failure category, finish reason and token counts if it fails. Share only those
+   diagnostics, never the API key, private source text or raw provider response.
+5. If topic generation succeeds, upload a small public educational TXT/PDF/DOCX,
+   review the extracted text, then generate five questions. Save accepted questions
+   to a bank and verify they can be added to a draft.
+
+`MAX_TOKENS` indicates truncation: first try fewer questions. Check project model
+availability for `MODEL_UNAVAILABLE`, permissions for `PROVIDER_CONFIGURATION`,
+and Google project quota for `PROVIDER_QUOTA`. Recovery cannot guarantee a valid
+or factually accurate response. No live provider requests are part of automated
+or browser verification.
+
+On a busy development machine, run verification suites separately. PowerShell
+`$env:VITEST_MAX_WORKERS='1'` reduces test process contention for `npm test` and
+`npm run test:integration`; concurrency-sensitive tests still issue simultaneous
+requests inside each test. This does not change application settings or budgets.

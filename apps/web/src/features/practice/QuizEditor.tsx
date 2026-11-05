@@ -7,6 +7,7 @@ import { safeError } from './format';
 import { useLeaveWarning } from './useLeaveWarning';
 import type { DraftQuestion, DraftQuiz, QuizSummary } from './types';
 import { QuestionPicker } from '../banks/QuestionPicker';
+import { AiGenerator } from '../ai/AiGenerator';
 
 const blankQuestion = (): DraftQuestion => ({
   prompt: '',
@@ -81,6 +82,7 @@ function EditorForm({
   const [closesAt, setClosesAt] = useState(localDate(initial?.closesAt));
   const [maxAttempts, setMaxAttempts] = useState(initial?.maxAttempts ?? 1);
   const [picking, setPicking] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const base = academic ? `/courses/${courseId}/assessments` : '/quizzes';
   const back = academic ? `/courses/${courseId}` : '/practice';
   const editPath = (id: string) =>
@@ -306,6 +308,30 @@ function EditorForm({
               One mark per question. No negative marking.
             </p>
           </div>
+          <div className="bank-tools">
+            <button
+              className="button secondary"
+              type="button"
+              disabled={questions.length >= 50}
+              onClick={() => setGenerating((value) => !value)}
+            >
+              Generate with AI
+            </button>
+          </div>
+          {generating ? (
+            <AiGenerator
+              remaining={50 - questions.length}
+              onClose={() => setGenerating(false)}
+              onAdd={(selected) => {
+                setQuestions((values) => [...values, ...selected]);
+                setDirty(true);
+                setNotice(
+                  `${selected.length} AI questions added. Save your draft to keep them.`,
+                );
+                setGenerating(false);
+              }}
+            />
+          ) : null}
           <div className="bank-tools">
             <button
               className="button secondary"

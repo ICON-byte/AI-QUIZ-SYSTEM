@@ -23,6 +23,7 @@ import { BankEditor } from '../features/banks/BankEditor';
 import { BankDetails } from '../features/banks/BankDetails';
 import { QuestionEditor } from '../features/banks/QuestionEditor';
 import { CsvImport } from '../features/banks/CsvImport';
+import { AiPage } from '../features/ai/AiGenerator';
 
 export function App() {
   return <Routes>
@@ -34,6 +35,7 @@ export function App() {
       <Route path="/account" element={<Account />} />
       <Route path="/verification" element={<Verification />} />
       <Route path="/banks" element={<BankList />} />
+      <Route path="/ai" element={<AiPage />} />
       <Route path="/banks/new" element={<BankEditor />} />
       <Route path="/banks/:bankId" element={<BankDetails />} />
       <Route path="/banks/:bankId/edit" element={<BankEditor />} />

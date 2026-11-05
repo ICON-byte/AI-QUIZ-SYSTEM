@@ -14,7 +14,7 @@ if (!/^auth_test_[a-f0-9]{16}$/.test(process.env.TEST_SCHEMA ?? '') || new URL(c
 const db = createDatabase(config.DATABASE_URL);
 const { app, ready } = createApp(db, config);
 const origin = config.APP_ORIGIN;
-const credentials = { email: 'student@example.edu', displayName: 'Ada Okoro', role: 'STUDENT', password: 'a-long-test-passphrase' };
+const credentials = { email: 'student@example.edu', displayName: 'Ada Okoro', ageConfirmed: true, role: 'STUDENT', password: 'a-long-test-passphrase' };
 
 function post(path: string, body: object = {}) {
   return request(app).post(`/api/v1${path}`).set('Origin', origin).set('X-CSRF-Protection', '1').send(body);

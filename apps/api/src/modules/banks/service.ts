@@ -107,6 +107,23 @@ async function courseAssociation(
       'Choose an active course you own.',
     );
 }
+
+// Used by AI acceptance: ownership, capacity and writes stay in the caller's transaction.
+export async function saveAcceptedQuestions(tx: Tx, userId: string, input: {
+  questions: BankQuestionInput[]; bankId?: string; newBank?: BankInput;
+}) {
+  let bankId = input.bankId;
+  if (input.newBank) {
+    await courseAssociation(tx, userId, input.newBank.courseId);
+    const bank = await tx.questionBank.create({ data: { ...input.newBank, ownerId: userId } });
+    bankId = bank.id;
+  }
+  if (!bankId) throw missing();
+  await ownedBank(tx, userId, bankId, true);
+  await capacity(tx, bankId, input.questions.length);
+  await tx.question.createMany({ data: input.questions.map(q => ({ ...q, bankId })) });
+  return { bankId, savedCount: input.questions.length };
+}
 async function ownedQuestion(
   tx: Tx,
   bankId: string,

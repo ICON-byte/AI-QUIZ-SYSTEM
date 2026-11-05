@@ -73,6 +73,7 @@ beforeAll(async () => {
         displayName: role === 'STUDENT' ? 'Ada Okoro' : 'Nneka Okafor',
         password: 'safe-long-test-passphrase',
         role,
+        ageConfirmed: true,
       },
       { id: '', cookies: [] },
     );

@@ -101,6 +101,7 @@ beforeAll(async () => {
         email: `${randomUUID()}@example.edu`,
         displayName: 'Practice Tester',
         role,
+        ageConfirmed: true,
         password: 'safe-test-passphrase',
       });
     expect(response.status).toBe(201);

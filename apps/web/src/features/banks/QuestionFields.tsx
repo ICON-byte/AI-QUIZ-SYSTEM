@@ -4,9 +4,13 @@ import type { DraftQuestion } from '../practice/types';
 export function QuestionFields({
   value,
   onChange,
+  idPrefix = 'bank',
+  explanationRequired = false,
 }: {
   value: DraftQuestion;
   onChange: (next: DraftQuestion) => void;
+  idPrefix?: string;
+  explanationRequired?: boolean;
 }) {
   return (
     <>
@@ -27,7 +31,7 @@ export function QuestionFields({
             <label className="correct-choice">
               <input
                 type="radio"
-                name="bank-correct"
+                name={`${idPrefix}-correct`}
                 checked={value.correctOption === i}
                 onChange={() => onChange({ ...value, correctOption: i })}
                 aria-label={`Correct answer ${String.fromCharCode(65 + i)}`}
@@ -49,9 +53,13 @@ export function QuestionFields({
         ))}
       </fieldset>
       <label className="field">
-        Explanation <span className="field-hint">Optional</span>
+        Explanation{' '}
+        {!explanationRequired ? (
+          <span className="field-hint">Optional</span>
+        ) : null}
         <textarea
           rows={3}
+          required={explanationRequired}
           maxLength={2000}
           value={value.explanation}
           onChange={(e) => onChange({ ...value, explanation: e.target.value })}

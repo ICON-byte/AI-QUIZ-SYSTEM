@@ -15,8 +15,10 @@ describe('configuration and validation', () => {
     expect(() => loadConfig({ ...input, APP_ORIGIN: 'http://localhost:5173/' })).toThrow('APP_ORIGIN');
   });
   it('normalizes email, rejects role escalation and bcrypt truncation', () => {
-    const valid = { email: ' Student@Example.edu ', displayName: 'Ada Okoro', password: 'a-long-safe-passphrase', role: 'STUDENT' };
+    const valid = { email: ' Student@Example.edu ', displayName: 'Ada Okoro', password: 'a-long-safe-passphrase', ageConfirmed: true, role: 'STUDENT' };
     expect(registerSchema.parse(valid).email).toBe('student@example.edu');
+    expect(registerSchema.safeParse({ ...valid, ageConfirmed: false }).success).toBe(false);
+    expect(registerSchema.safeParse({ ...valid, ageConfirmed: undefined }).success).toBe(false);
     expect(registerSchema.safeParse({ ...valid, role: 'ADMIN' }).success).toBe(false);
     expect(registerSchema.safeParse({ ...valid, verificationStatus: 'APPROVED' }).success).toBe(false);
     expect(registerSchema.safeParse({ ...valid, password: 'é'.repeat(40) }).success).toBe(false);

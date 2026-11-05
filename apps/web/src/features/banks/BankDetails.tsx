@@ -103,6 +103,7 @@ export function BankDetails() {
               <Link className="button secondary" to={`/banks/${bankId}/import`}>
                 Import CSV
               </Link>
+              <Link className="button secondary" to={`/ai?bank=${bankId}`}>Generate with AI</Link>
             </>
           ) : (
             <span className="status neutral">Archived</span>

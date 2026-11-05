@@ -10,7 +10,18 @@ const schema = z.object({
   ACCESS_TOKEN_MINUTES: z.coerce.number().int().min(1).max(30).default(10),
   SESSION_DAYS: z.coerce.number().int().min(1).max(30).default(7),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
-  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(3).default(0)
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(3).default(0),
+  GEMINI_API_KEY: z.string().trim().default(''),
+  GEMINI_MODEL: z.string().trim().max(120).regex(/^[a-zA-Z0-9._-]*$/).default(''),
+  AI_DAILY_USER_LIMIT: z.coerce.number().int().min(1).max(100).default(5),
+  AI_DAILY_PROJECT_CALL_LIMIT: z.coerce.number().int().min(1).max(10000).default(20),
+  AI_CALL_INTERVAL_SECONDS: z.coerce.number().int().min(1).max(300).default(30),
+  AI_JOB_TIMEOUT_SECONDS: z.coerce.number().int().min(30).max(300).default(120),
+  AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(1024).max(16000).default(8192),
+  AI_DOCUMENT_MAX_BYTES: z.coerce.number().int().min(1024).max(10*1024*1024).default(5*1024*1024),
+  AI_DOCUMENT_MAX_CHARACTERS: z.coerce.number().int().min(1000).max(100000).default(40000),
+  AI_DOCUMENT_MAX_PAGES: z.coerce.number().int().min(1).max(200).default(100),
+  AI_EXTRACTION_TIMEOUT_SECONDS: z.coerce.number().int().min(1).max(30).default(10)
 }).superRefine((value, ctx) => {
   const origin = new URL(value.APP_ORIGIN);
   if (origin.origin !== value.APP_ORIGIN) {

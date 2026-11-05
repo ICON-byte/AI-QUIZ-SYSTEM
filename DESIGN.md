@@ -165,3 +165,42 @@ The CSV import screen also passed the inspector at all three widths. Its file
 guidance was increased to 13px after the initial inspection; the final run has
 only a desktop whitespace warning because the file chooser has no preview until
 a file is selected. The workspace intentionally keeps its full-height frame.
+
+## Stage 5: AI generation and review
+
+The existing Editorial greeting direction (seed 80601035), Instrument Sans,
+sage/neutral palette and responsive workspace are retained. No AI illustrations,
+decorative progress animations, fabricated percentages or unrelated dashboard
+elements are introduced.
+
+- Generation input answers what material to use: a topic or a bounded document.
+  A visible free-tier privacy notice and explicit non-sensitive-material confirmation
+  precede submission. Availability, age eligibility and actual allowance are clear.
+- Document preview answers what leaves the application: editable page/paragraph text
+  with an explicit review confirmation. File/page/character constraints are visible
+  beside the chooser and connected with aria-describedby.
+- Job status sits above the input panel and reflects backend queue, pacing, provider
+  call and bounded recovery states. A quiet activity dot, elapsed time and fixed
+  deadline replace invented progress. A disclosure contains sanitized per-call
+  categories, field paths, finish reasons and available token counts.
+- Active/recent jobs can be resumed with owner settings restored for 24 hours.
+  Consent is not restored across page reloads; document regeneration requires a
+  fresh upload and text review because terminal jobs do not retain source input.
+- Review answers which questions to keep: existing four-option question controls,
+  independent radio groups, explanation/source fields, difficulty/topic and selection.
+  Review edits remain drafts until the user saves to a bank or the current quiz.
+- Registration adds a required 18+ confirmation; existing accounts confirm on the
+  AI page without disrupting their manual features. No date of birth is collected.
+
+Chrome validation used an injected mock provider and disposable biology fixtures,
+with zero live Gemini requests. It exercised age confirmation, topic generation,
+question edits/rejection, new-bank acceptance, whole-set regeneration, actual PDF,
+DOCX and TXT upload/extraction, reviewed-only text submission, source references,
+both quiz editors, published practice grading, withheld assessment review, private
+job ownership, provider failure and payload deletion. Captures at 1440, 768 and 390
+pixels had no page overflow or uncaught errors.
+
+The final AI review inspector measured zero failures and zero warnings at all three
+widths. Screenshots were visually checked for form labels, readable privacy text,
+question controls and phone wrapping. Source design lint has no failures; its only
+warning remains the existing countdown's deliberate zero-padding.

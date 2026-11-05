@@ -8,7 +8,8 @@ export const registerSchema = z.object({
   email: emailSchema,
   displayName: z.string().trim().min(2).max(80).regex(/^[^\p{Cc}\p{Cf}]+$/u, 'Use a readable name.'),
   password,
-  role: z.enum(['STUDENT', 'LECTURER'])
+  role: z.enum(['STUDENT', 'LECTURER']),
+  ageConfirmed: z.literal(true, { error: 'You must confirm that you are at least 18 years old.' })
 }).strict();
 
 export const loginSchema = z.object({

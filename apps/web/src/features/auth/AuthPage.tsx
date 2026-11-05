@@ -33,7 +33,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
       const result = await api<{ user: User }>(register ? '/auth/register' : '/auth/login', {
         method: 'POST', body: JSON.stringify({
           email: String(data.get('email')).trim(), password,
-          ...(register ? { displayName: String(data.get('displayName')).trim(), role } : {})
+          ...(register ? { displayName: String(data.get('displayName')).trim(), role, ageConfirmed: data.get('ageConfirmed') === 'on' } : {})
         })
       }, false);
       queryClient.setQueryData(sessionKey, result.user);
@@ -88,6 +88,8 @@ export function AuthPage({ register = false }: { register?: boolean }) {
             </div>
             {register ? <p className="field-hint" id="password-hint">Use at least 12 characters. A longer passphrase works well.</p> : null}
           </div>
+          {register ? <label className="check-label age-confirmation"><input type="checkbox" name="ageConfirmed" required disabled={pending} />I confirm that I am at least 18 years old.</label> : null}
+          {register ? <p className="field-hint">For university students and lecturers aged 18+ in Nigeria.</p> : null}
           {error ? <div role="alert" className="form-error"><p>{error.message}</p>
             {error.fields.length ? <ul>{error.fields.map((field, index) => <li key={index}>{field.field}: {field.message}</li>)}</ul> : null}
           </div> : null}

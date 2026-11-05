@@ -42,6 +42,7 @@ export function Workspace() {
         <NavLink to="/dashboard">Overview <span aria-hidden="true">↗</span></NavLink>
         <NavLink to="/courses">My courses</NavLink>
         <NavLink to="/banks">Question banks</NavLink>
+        <NavLink to="/ai">Generate questions</NavLink>
         {user.role === 'STUDENT' ? <><NavLink to="/practice" end>My practice quizzes</NavLink><NavLink to="/practice/history">Practice history</NavLink></> : null}
         {user.role === 'LECTURER' ? <NavLink to="/verification">Lecturer verification</NavLink> : null}
         <NavLink to="/account">My account</NavLink>

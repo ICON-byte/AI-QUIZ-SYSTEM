@@ -1,4 +1,5 @@
 export interface User {
+  ageConfirmed?: boolean;
   id: string;
   email: string;
   displayName: string;
@@ -18,7 +19,7 @@ let refreshRequest: Promise<boolean> | null = null;
 async function send(path: string, init: RequestInit = {}) {
   return fetch(`/api/v1${path}`, {
     ...init, credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Protection': '1', ...init.headers }
+    headers: { ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), 'X-CSRF-Protection': '1', ...init.headers }
   });
 }
 

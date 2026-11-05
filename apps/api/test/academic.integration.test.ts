@@ -128,6 +128,7 @@ beforeAll(async () => {
         displayName: role === 'LECTURER' ? 'Nneka Okafor' : 'Ada Okoro',
         password: 'long-safe-test-passphrase',
         role,
+        ageConfirmed: true,
       });
     expect(response.status).toBe(201);
     if (approved)

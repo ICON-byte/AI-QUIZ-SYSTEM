@@ -45,6 +45,7 @@ describe('account interface', () => {
     await userEvent.type(screen.getByLabelText('Full name'), lecturer.displayName);
     await userEvent.type(screen.getByLabelText('Email address'), lecturer.email);
     await userEvent.type(screen.getByLabelText('Password'), 'a-long-test-passphrase');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'I confirm that I am at least 18 years old.' }));
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
     expect(await screen.findByRole('heading', { name: 'Hello, Ada.' })).toBeInTheDocument();
     const call = fetchMock.mock.calls.find(call => String(call[0]).endsWith('/auth/register'));

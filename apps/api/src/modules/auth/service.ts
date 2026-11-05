@@ -10,7 +10,7 @@ import { newRefreshToken, tokenHash, signAccess } from './tokens.js';
 
 export function publicUser(user: User & { verification: LecturerVerification | null }) {
   return { id: user.id, email: user.email, displayName: user.displayName, role: user.role,
-    verificationStatus: user.verification?.status ?? null, createdAt: user.createdAt.toISOString() };
+    verificationStatus: user.verification?.status ?? null, createdAt: user.createdAt.toISOString(), ageConfirmed: !!user.adultConfirmedAt };
 }
 
 const invalidSession = () => new HttpError(401, 'SESSION_EXPIRED', 'Please sign in again.');
@@ -36,7 +36,7 @@ export function createAuthService(db: Database, config: Config) {
       const passwordHash = await bcrypt.hash(input.password, config.BCRYPT_ROUNDS);
       try {
         const user = await db.user.create({ data: {
-          email: input.email, displayName: input.displayName, role: input.role, passwordHash,
+          email: input.email, displayName: input.displayName, role: input.role, passwordHash, adultConfirmedAt: new Date(),
           ...(input.role === 'LECTURER' ? { verification: { create: {} } } : {})
         }, include: { verification: true } });
         return { user: publicUser(user), ...await createSession(user.id) };

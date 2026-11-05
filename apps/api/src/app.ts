@@ -11,6 +11,7 @@ import { authenticate, requireRole, requireVerifiedLecturer } from './modules/au
 import { practiceRoutes } from './modules/quizzes/routes.js';
 import { courseRoutes } from './modules/courses/routes.js';
 import { bankRoutes } from './modules/banks/routes.js';
+import { aiRoutes } from './modules/ai/routes.js';
 
 export function createApp(db: Database, config: Config) {
   const app = express();
@@ -30,7 +31,8 @@ export function createApp(db: Database, config: Config) {
       if (req.get('Origin') !== config.APP_ORIGIN || req.get('X-CSRF-Protection') !== '1' || req.get('Sec-Fetch-Site') === 'cross-site') {
         throw new HttpError(403, 'UNTRUSTED_REQUEST', 'This request could not be verified.');
       }
-      if (!req.is('application/json')) throw new HttpError(415, 'JSON_REQUIRED', 'Send an application/json request.');
+      const documentUpload = req.method === 'POST' && req.path === '/api/v1/ai/documents/extract' && req.is('multipart/form-data');
+      if (!req.is('application/json') && !documentUpload) throw new HttpError(415, 'JSON_REQUIRED', 'Send an application/json request.');
     }
     next();
   });
@@ -39,6 +41,7 @@ export function createApp(db: Database, config: Config) {
   // JSON transport preserves the existing CSRF contract; raw CSV is capped separately.
   app.use('/api/v1/question-banks/:bankId/import', express.json({ limit: '2mb' }));
   app.use('/api/v1/question-banks', express.json({ limit: '64kb' }));
+  app.use('/api/v1/ai', express.json({ limit: '512kb' }));
   app.use(express.json({ limit: '16kb' }));
   app.use(cookieParser());
   const auth = authRoutes(db, config);
@@ -48,6 +51,7 @@ export function createApp(db: Database, config: Config) {
   app.use('/api/v1/auth/register', credentialsLimiter);
   app.use('/api/v1/auth', auth.router);
   const authenticated = authenticate(db, config);
+  app.use('/api/v1/ai', authenticated, aiRoutes(db, config));
   app.use('/api/v1/question-banks', authenticated, bankRoutes(db, config));
   app.use('/api/v1/quizzes', authenticated, requireRole('STUDENT'));
   app.use('/api/v1/attempts', authenticated, requireRole('STUDENT'));

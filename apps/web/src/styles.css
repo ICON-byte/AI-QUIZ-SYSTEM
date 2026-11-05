@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+.age-confirmation { margin: 14px 0 8px; align-items: start; }
+.ai-generator { margin: 20px 0; }
+.ai-generator > * + *, .ai-review > * + * { margin-top: 24px; }
+.ai-privacy { padding: 20px 24px; background: #edf1ee; border-radius: 12px; max-width: 850px; }
+.ai-privacy p { margin-top: 8px; }
+.ai-usage { color: var(--muted); font-size: 13px; max-width: 800px; }
+.ai-inputs { max-width: 850px; }
+.ai-inputs > fieldset > * + * { margin-top: 16px; }
+.ai-inputs input[type="file"] { max-width: 100%; }
+.ai-consent { align-items: start; margin-bottom: 24px; }
+.ai-consent input { margin-top: 4px; }
+.ai-source { margin-top: 24px; }
+.ai-source > * + * { margin-top: 16px; }
+.ai-review .question-editor { margin-top: 20px; }
+.ai-review .question-editor .field { margin-top: 16px; }
+.ai-save > * + * { margin-top: 16px; }
+.ai-job-status { padding: 16px 20px; background: var(--surface); border-radius: 8px; }
+#ai-document-limits { font-size: 13px; }
+@media(max-width:640px) { .ai-privacy { padding: 20px; } .ai-review .section-heading { flex-wrap: wrap; } }
+
 @theme {
   --font-sans: "Instrument Sans Variable", "Instrument Sans", system-ui, sans-serif;
 }
@@ -348,3 +368,8 @@ h3 { font-size: 14px; font-weight: 600; }
   .history-table { min-width: 580px; }
   .pagination .button { padding-inline: 10px; font-size: 12px; }
 }
+
+.ai-job-status summary { min-height: 44px; cursor: pointer; align-content: center; }
+.ai-job-status p { margin: 0 0 .5rem; overflow-wrap: anywhere; }
+.ai-job-status li { overflow-wrap: anywhere; }
+.ai-activity { display: inline-block; width: .65rem; height: .65rem; margin-right: .5rem; border-radius: 50%; background: var(--accent); }
