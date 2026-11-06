@@ -113,6 +113,11 @@ sessions immediately. Lecturers can refresh their verification page to see updat
 
 - Passwords use bcrypt. Registration requires 12 characters and at most 72 UTF-8
   bytes to avoid bcrypt truncation. Emails are trimmed, normalized, and unique.
+- Student and lecturer registration require a matching **Confirm password** field.
+  A mismatch shows an accessible inline error and prevents the registration request.
+  Passwords are compared exactly, without trimming; confirmation stays in the browser
+  and is not sent to the API or stored. Each password field has its own Show/Hide
+  control. Sign-in still requires only the existing password field.
 - Short-lived HS256 JWTs and opaque refresh tokens use HttpOnly, SameSite=Lax
   cookies. Production cookies are Secure. No tokens are returned in JSON or stored
   in browser local/session storage.

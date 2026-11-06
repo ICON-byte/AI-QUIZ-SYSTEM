@@ -144,6 +144,7 @@ describe('student challenge workflow', () => {
       screen.getByLabelText('Password'),
       'secure-test-passphrase',
     );
+    await userEvent.type(screen.getByLabelText('Confirm password'), 'secure-test-passphrase');
     await userEvent.click(
       screen.getByRole('checkbox', { name: /I confirm that I am at least 18/ }),
     );

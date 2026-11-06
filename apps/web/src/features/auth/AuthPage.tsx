@@ -25,6 +25,8 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
 
   if (pageLoading) return <Loading />;
   if (session.error) return <main className="standalone"><Feedback message={session.error.message} retry={() => { void session.refetch(); }} /></main>;
@@ -34,8 +36,16 @@ export function AuthPage({ register = false }: { register?: boolean }) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const password = String(data.get('password'));
+    setError(null);
+    setPasswordMismatch(false);
     if (new TextEncoder().encode(password).length > 72) {
       setError(new ApiError(400, 'Use a password of at most 72 UTF-8 bytes.'));
+      return;
+    }
+    if (register && password !== String(data.get('confirmPassword'))) {
+      setPasswordMismatch(true);
+      const confirmation = event.currentTarget.elements.namedItem('confirmPassword');
+      if (confirmation instanceof HTMLInputElement) confirmation.focus();
       return;
     }
     setPending(true);
@@ -94,11 +104,23 @@ export function AuthPage({ register = false }: { register?: boolean }) {
             <label htmlFor="password">Password</label>
             <div className="password-input">
               <input id="password" name="password" type={showPassword ? 'text' : 'password'} autoComplete={register ? 'new-password' : 'current-password'}
-                required minLength={register ? 12 : 1} maxLength={72} disabled={pending} aria-describedby={register ? 'password-hint' : undefined} />
+                required minLength={register ? 12 : 1} maxLength={72} disabled={pending} aria-describedby={register ? 'password-hint' : undefined}
+                onChange={() => setPasswordMismatch(false)} />
               <button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? 'Hide' : 'Show'}</button>
             </div>
             {register ? <p className="field-hint" id="password-hint">Use at least 12 characters. A longer passphrase works well.</p> : null}
           </div>
+          {register ? <div className="field">
+            <label htmlFor="confirm-password">Confirm password</label>
+            <div className="password-input">
+              <input id="confirm-password" name="confirmPassword" type={showConfirmation ? 'text' : 'password'} autoComplete="new-password"
+                required minLength={12} maxLength={72} disabled={pending} aria-invalid={passwordMismatch || undefined}
+                aria-describedby={passwordMismatch ? 'confirm-password-error' : undefined} onChange={() => setPasswordMismatch(false)} />
+              <button type="button" disabled={pending} onClick={() => setShowConfirmation(value => !value)}
+                aria-label={showConfirmation ? 'Hide confirmation password' : 'Show confirmation password'}>{showConfirmation ? 'Hide' : 'Show'}</button>
+            </div>
+            {passwordMismatch ? <p className="form-error" id="confirm-password-error" role="alert">Passwords do not match.</p> : null}
+          </div> : null}
           {register ? <label className="check-label age-confirmation"><input type="checkbox" name="ageConfirmed" required disabled={pending} />I confirm that I am at least 18 years old.</label> : null}
           {register ? <p className="field-hint">For university students and lecturers aged 18+ in Nigeria.</p> : null}
           {error ? <div role="alert" className="form-error"><p>{error.message}</p>

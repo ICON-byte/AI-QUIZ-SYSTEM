@@ -44,6 +44,7 @@ describe('account interface', () => {
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     expect(screen.getByLabelText('Email address')).toHaveAttribute('type', 'email');
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
+    expect(screen.queryByLabelText('Confirm password')).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Show password' }));
     expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'text');
   });
@@ -62,13 +63,52 @@ describe('account interface', () => {
     await userEvent.type(screen.getByLabelText('Full name'), lecturer.displayName);
     await userEvent.type(screen.getByLabelText('Email address'), lecturer.email);
     await userEvent.type(screen.getByLabelText('Password'), 'a-long-test-passphrase');
+    await userEvent.type(screen.getByLabelText('Confirm password'), 'a-long-test-passphrase');
     await userEvent.click(screen.getByRole('checkbox', { name: 'I confirm that I am at least 18 years old.' }));
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
     expect(await screen.findByRole('heading', { name: 'Hello, Ada.' })).toBeInTheDocument();
     const call = fetchMock.mock.calls.find(call => String(call[0]).endsWith('/auth/register'));
     expect(JSON.parse(call![1].body).role).toBe('LECTURER');
+    expect(JSON.parse(call![1].body)).not.toHaveProperty('confirmPassword');
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it('requires password confirmation and blocks mismatches until corrected', async () => {
+    const fetchMock = vi.fn().mockImplementation((path: string) => {
+      if (path.endsWith('/auth/register')) return Promise.resolve(json({ user: student }, 201));
+      if (path.includes('/dashboard/')) return Promise.resolve(json({ role: 'STUDENT' }));
+      return Promise.resolve(unauthorized());
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    open('/register');
+    await screen.findByRole('heading', { name: 'Create your account' });
+    await userEvent.type(screen.getByLabelText('Full name'), student.displayName);
+    await userEvent.type(screen.getByLabelText('Email address'), student.email);
+    await userEvent.type(screen.getByLabelText('Password'), 'a-long-test-passphrase');
+    await userEvent.click(screen.getByRole('checkbox', { name: /at least 18/ }));
+    const confirmation = screen.getByLabelText('Confirm password');
+    expect(confirmation).toBeRequired();
+    expect(confirmation).toHaveAttribute('autocomplete', 'new-password');
+    expect(confirmation).toHaveAttribute('type', 'password');
+    await userEvent.click(screen.getByRole('button', { name: 'Show confirmation password' }));
+    expect(confirmation).toHaveAttribute('type', 'text');
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
+    await userEvent.click(screen.getByRole('button', { name: 'Hide confirmation password' }));
+    expect(confirmation).toHaveAttribute('type', 'password');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(fetchMock.mock.calls.filter(call => String(call[0]).endsWith('/auth/register'))).toHaveLength(0);
+    await userEvent.type(confirmation, 'a-different-passphrase');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Passwords do not match.');
+    expect(confirmation).toHaveAttribute('aria-invalid', 'true');
+    expect(confirmation).toHaveFocus();
+    expect(fetchMock.mock.calls.filter(call => String(call[0]).endsWith('/auth/register'))).toHaveLength(0);
+    await userEvent.clear(confirmation);
+    await userEvent.type(confirmation, 'a-long-test-passphrase');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(await screen.findByRole('heading', { name: 'Hello, Ada.' })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(call => String(call[0]).endsWith('/auth/register'))).toHaveLength(1);
   });
 
   it('shows server login errors without leaving the form', async () => {
