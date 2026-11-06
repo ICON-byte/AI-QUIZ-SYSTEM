@@ -69,99 +69,84 @@ export function LandingPage() {
               </a>
             </div>
           </div>
-          <figure
-            className="lp-hero-figure"
-            aria-label="Prepared example showing a study passage and a related question"
+          <div
+            className="lp-hero-sample"
+            id="review"
+            tabIndex={-1}
+            role="region"
+            aria-label="Review and try a prepared question"
           >
-            <div className="lp-hero-stage" data-ui>
-              <article className="lp-hero-paper">
-                <div className="lp-document-top">
-                  <span>Computer science</span>
-                  <span>Study note</span>
-                </div>
-                <h2>{sample.title}</h2>
-                <p>
-                  Finding one answer doesn’t have to mean reading every
-                  possibility.
-                </p>
-                <p className="lp-hero-passage">
-                  <mark>{sample.quote}</mark>
-                  <br />
-                  Each comparison eliminates half of the remaining search
-                  interval.
-                </p>
-                <div className="lp-paper-foot">
-                  <span>Read. Review. Make it yours.</span>
-                  <span aria-hidden="true">↳</span>
-                </div>
-              </article>
-              <article className="lp-hero-question">
-                <div className="lp-document-top">
-                  <span>From your material</span>
-                  <span>Practice</span>
-                </div>
-                <h2>{sample.question}</h2>
-                <div className="lp-preview-options">
-                  {sample.options.map((option, index) => (
-                    <div key={option}>
-                      <span className="lp-option-letter" aria-hidden="true">
-                        {String.fromCharCode(65 + index)}
-                      </span>
-                      <span>{option}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="lp-hero-citation">
-                  <span aria-hidden="true">↳</span>
-                  <p>
-                    Connected to the passage.
-                    <br />
-                    <strong>Ready for your review.</strong>
-                  </p>
-                </div>
-              </article>
-            </div>
-            <figcaption>
-              <span>
-                A prepared example of the source-to-question workflow.
-              </span>
-              <span>Topics · PDF · DOCX · TXT</span>
-            </figcaption>
-          </figure>
+            <QuizDemo />
+          </div>
+          <div className="lp-demo-caption">
+            <p>Authored sample: inspect, edit and answer here. Nothing is saved.</p>
+          </div>
         </section>
 
         <section
-          className="lp-review lp-shell lp-section"
-          id="review"
+          className="lp-bank lp-shell lp-section"
+          id="banks"
           tabIndex={-1}
-          aria-labelledby="review-title"
+          aria-labelledby="bank-title"
         >
-          <div className="lp-section-heading" data-reveal>
-            <h2 id="review-title">
-              Review before
-              <br />
-              you use.
-            </h2>
-            <div>
-              <p>
-                AI gives you a starting point.
+          <div className="lp-bank-layout">
+            <div data-reveal>
+              <h2 id="bank-title">
+                Questions
                 <br />
-                You make the final call.
-              </p>
+                worth keeping.
+              </h2>
+              <p>Reviewed once. Ready to use again.</p>
               <p className="lp-secondary">
-                Inspect the passage, refine the wording, then answer the
-                question. Try the process here.
+                Keep a reviewed question in a private bank. Select it
+                for a new quiz; each draft gets its own independent copy. Your
+                bank stays yours.
               </p>
             </div>
+            <figure data-reveal>
+              <div className="lp-bank-sheet" data-ui>
+                <div className="lp-document-top">
+                  <span>Your question bank</span>
+                  <span>Private · Example</span>
+                </div>
+                <h3>Search &amp; sorting</h3>
+                <div className="lp-bank-row">
+                  <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="1.7" /></svg>
+                  <div>
+                    <strong>{sample.question}</strong>
+                    <span>Algorithms · Medium</span>
+                  </div>
+                </div>
+                <div className="lp-bank-row">
+                  <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="1.7" /></svg>
+                  <div>
+                    <strong>Which half of the interval remains?</strong>
+                    <span>Algorithms · Medium</span>
+                  </div>
+                </div>
+                <p className="lp-bank-selection">
+                  Two reviewed questions. Three ways to use them.
+                </p>
+              </div>
+              <figcaption>
+                Illustrative private bank · edits never change published quizzes.
+              </figcaption>
+            </figure>
           </div>
-          <div data-reveal>
-            <QuizDemo />
-          </div>
-          <p className="lp-demo-caption">
-            This demonstration uses prepared content. Real AI generation starts
-            with your topic or reviewed text and requires your review before
-            use.
-          </p>
+          <nav className="lp-bank-destinations" aria-label="Ways to use a reviewed question">
+            <a href="#practice">
+              <span>For your understanding</span>
+              <strong>Personal practice <span aria-hidden="true">↓</span></strong>
+            </a>
+            <a href="#teaching">
+              <span>For your course</span>
+              <strong>Official assessments <span aria-hidden="true">↓</span></strong>
+            </a>
+            <a href="#challenges">
+              <span>For your friends</span>
+              <strong>Private challenges <span aria-hidden="true">↓</span></strong>
+            </a>
+          </nav>
         </section>
 
         <section
@@ -178,7 +163,7 @@ export function LandingPage() {
                 attempt count.
               </h2>
               <p>
-                Find the gap between recognising an answer and understanding it.
+                Knowing the answer is a start. Understanding why is the point.
               </p>
               <p className="lp-secondary">
                 Practise at your own pace, read the explanations, then build a
@@ -208,19 +193,16 @@ export function LandingPage() {
                 </div>
                 <div className="lp-result-review">
                   <span className="lp-small-label">Question to revisit</span>
-                  <h3>Why must the input be sorted?</h3>
-                  <p>
-                    So each comparison tells you which half of the search
-                    interval to keep.
-                  </p>
+                  <h3>{sample.question}</h3>
+                  <p className="lp-result-choice">Sample choice: no repeated values</p>
+                  <p><strong>Correct answer: sorted input.</strong> Each comparison tells you which half of the search interval to keep.</p>
                   <span className="lp-result-action">
-                    Practise incorrect questions{' '}
-                    <span aria-hidden="true">↗</span>
+                    Next step: practise incorrect questions
                   </span>
                 </div>
               </div>
               <figcaption>
-                Illustrative result. Explanations turn a score into a next step.
+                The same question, with a useful explanation. Illustrative result.
               </figcaption>
             </figure>
           </div>
@@ -240,9 +222,7 @@ export function LandingPage() {
             </h2>
             <div>
               <p>
-                From a considered question
-                <br />
-                to an official assessment.
+                A reviewed question, now part of your course.
               </p>
               <p className="lp-secondary">
                 Verified lecturers manage courses, enroll students and publish
@@ -269,7 +249,7 @@ export function LandingPage() {
               <p className="lp-secondary">
                 Official assessment access requires lecturer verification.
               </p>
-              <Link className="lp-text-link" to={destination}>
+              <Link className="lp-text-link" to={signedIn ? '/dashboard' : '/register?role=LECTURER'}>
                 {signedIn ? 'Open workspace' : 'Create a lecturer account'}
                 <span aria-hidden="true">↗</span>
               </Link>
@@ -302,6 +282,8 @@ export function LandingPage() {
                   <p>Students enter through their enrolled course.</p>
                 </div>
                 <div className="lp-assessment-note">
+                  <span className="lp-small-label">Includes a reviewed question</span>
+                  <p>{sample.question}</p>
                   Scores after submission.
                   <br />
                   Answer review after assessment closure.
@@ -346,8 +328,10 @@ export function LandingPage() {
                 <p>
                   A few questions.
                   <br />A few friends.
-                  <br />
-                  Something to talk about.
+                </p>
+                <p className="lp-invitation-question">
+                  <span>From your question bank</span>
+                  {sample.question}
                 </p>
                 <div>
                   <span>Invitation-only</span>
@@ -413,57 +397,6 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section
-          className="lp-bank lp-shell lp-section"
-          aria-labelledby="bank-title"
-        >
-          <div className="lp-bank-layout">
-            <div data-reveal>
-              <h2 id="bank-title">
-                Questions
-                <br />
-                worth keeping.
-              </h2>
-              <p>A good question can do more than one job.</p>
-              <p className="lp-secondary">
-                Save reviewed questions in your private banks. Bring them into
-                your next practice quiz, assessment or challenge without
-                starting again.
-              </p>
-            </div>
-            <figure data-reveal>
-              <div className="lp-bank-sheet" data-ui>
-                <div className="lp-document-top">
-                  <span>Your question bank</span>
-                  <span>Private · Example</span>
-                </div>
-                <h3>Search &amp; sorting</h3>
-                <div className="lp-bank-row">
-                  <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="1.7" /></svg>
-                  <div>
-                    <strong>What does binary search require?</strong>
-                    <span>Algorithms · Medium</span>
-                  </div>
-                </div>
-                <div className="lp-bank-row">
-                  <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="1.7" /></svg>
-                  <div>
-                    <strong>Which half of the interval remains?</strong>
-                    <span>Algorithms · Medium</span>
-                  </div>
-                </div>
-                <div className="lp-bank-selection">
-                  <span>2 questions selected</span>
-                  <span>Ready for a new draft ↗</span>
-                </div>
-              </div>
-              <figcaption>
-                Selected questions become independent copies in a draft.
-              </figcaption>
-            </figure>
-          </div>
-        </section>
-
         <section className="lp-faq lp-light-field" aria-labelledby="faq-title">
           <div className="lp-shell lp-faq-layout">
             <div data-reveal>
@@ -494,9 +427,9 @@ export function LandingPage() {
         >
           <div data-reveal>
             <h2 id="closing-title">
-              Start with
+              Put your notes
               <br />
-              what you’re studying.
+              to work.
             </h2>
             <div className="lp-closing-actions">
               <Link className="lp-button" to={destination}>

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { sample } from './demoContent';
 
 export function QuizDemo() {
@@ -9,6 +9,14 @@ export function QuizDemo() {
   const [answer, setAnswer] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
+  const wording = useRef<HTMLTextAreaElement>(null);
+  const feedback = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (editing) wording.current?.focus();
+  }, [editing]);
+  useEffect(() => {
+    if (submitted) feedback.current?.focus();
+  }, [submitted]);
   function move(next: 'review' | 'answer') {
     setStage(next);
     setEditing(false);
@@ -19,8 +27,8 @@ export function QuizDemo() {
   return (
     <div className="lp-demo" data-ui>
       <div className="lp-demo-toolbar">
-        <span>Interactive sample · prepared questions</span>
-        <span>Runs in your browser</span>
+        <span>From a passage to a question</span>
+        <span>Interactive sample</span>
       </div>
       <div className="lp-demo-columns">
         <article className={`lp-source ${sourceOpen ? 'source-active' : ''}`}>
@@ -28,7 +36,7 @@ export function QuizDemo() {
             <span>Computer science</span>
             <span>Study note</span>
           </div>
-          <h3>{sample.title}</h3>
+          <h2>{sample.title}</h2>
           <p>
             Imagine looking for a name in an alphabetically ordered list. You
             don’t need to read every entry.
@@ -37,37 +45,38 @@ export function QuizDemo() {
             <mark>{sample.quote}</mark> Each comparison eliminates half of the
             remaining search interval.
           </p>
-          <p>
-            Look in the middle. Keep the half that could contain the answer.
-            Repeat.
-          </p>
           <div className="lp-source-reference">
             <span aria-hidden="true">↳</span>
-            <span>One passage. A question you can trace back.</span>
+            <span>The highlighted passage supports the question beside it.</span>
           </div>
         </article>
         <div className="lp-demo-question">
           <div className="lp-demo-state">
             <span>
-              {stage === 'review' ? 'Question review' : 'Personal practice'}
+              {stage === 'review' ? 'Review before you use' : 'Personal practice'}
             </span>
             <span>1 question</span>
           </div>
           <div className="lp-demo-body" key={stage}>
-            <h3 ref={heading} tabIndex={-1}>
+            <h2
+              ref={heading}
+              tabIndex={-1}
+              className={stage === 'review' ? 'lp-demo-prompt' : undefined}
+            >
               {stage === 'review'
-                ? 'Make it your question.'
+                ? (editing ? 'Refine the wording.' : question)
                 : 'What do you think?'}
-            </h3>
+            </h2>
             {stage === 'review' ? (
               <>
                 <p className="lp-demo-help">
-                  Check the wording and its source before you try it.
+                  A starting point, ready for your review.
                 </p>
                 {editing ? (
                   <label className="lp-demo-edit">
                     Question wording
                     <textarea
+                      ref={wording}
                       maxLength={200}
                       value={question}
                       onChange={(event) => setQuestion(event.target.value)}
@@ -77,9 +86,7 @@ export function QuizDemo() {
                       the same.
                     </span>
                   </label>
-                ) : (
-                  <p className="lp-demo-prompt">{question}</p>
-                )}
+                ) : null}
                 <button
                   className="lp-text-button"
                   onClick={() => setEditing(!editing)}
@@ -104,7 +111,7 @@ export function QuizDemo() {
                 >
                   <blockquote>“{sample.quote}”</blockquote>
                   <p>
-                    From the study note shown here. Check the meaning as well as
+                    From the authored study note. Check the meaning as well as
                     the match.
                   </p>
                 </div>
@@ -146,7 +153,7 @@ export function QuizDemo() {
                 </fieldset>
                 <div role="status" aria-live="polite">
                   {submitted ? (
-                    <div className="lp-demo-feedback">
+                    <div className="lp-demo-feedback" ref={feedback} tabIndex={-1} role="region" aria-label="Sample answer feedback">
                       <strong>
                         {answer === sample.correct
                           ? 'Exactly. Order makes it work.'

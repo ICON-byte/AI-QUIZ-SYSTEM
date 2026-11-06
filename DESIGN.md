@@ -248,22 +248,27 @@ its source/question interface. The user-approved compact CTA, native FAQ disclos
 and restrained motion take precedence over the library's oversized scene recipes.
 
 On this page, the reviewed source passage becomes the recurring editorial object:
-a paper in the hero, an inspectable excerpt in the demo, a practice explanation and
-a question kept in a private bank. Product fragments contain complete, authored
+an inspectable source beside the hero's working question, a private bank selection,
+a practice explanation, a course assessment and a friends challenge. Product fragments contain complete, authored
 examples rather than decorative charts. Examples are restricted to the public page
 and explicitly labelled; authenticated account screens never receive sample data.
 
-The public layout uses oversized two-line type, an asymmetric desktop opening,
-layered paper/question surfaces, a full-width review spread, a light practice
-chapter, assessment margin notes, a joined invitation/leaderboard example and a
-wide bank selection. Mobile stacks content in reading order. Tablet uses adjacent
-readable sheets rather than obscuring the source with the desktop overlap.
+The public layout uses two-line display type with -0.04em desktop tracking and an
+asymmetric opening: the headline occupies the left field, introduction and actions
+the right. A single live source/question spread follows; there is no duplicate
+static hero preview. A slightly turned paper sits beside an upright question.
+The private bank comes next, with real anchor links branching into practice,
+assessments and challenges. Each subsequent specimen reveals a new outcome.
+On phones the question comes first and the source passage remains available through
+an explicit disclosure. Tablet retains adjacent source and question panes. The
+green-black, sage and paper palette, book mark and Instrument Sans are preserved.
 
 The local demo permits source inspection, wording edits and a four-option answer.
 The correct answer and explanation are prepared public content. Editing changes
 wording only, with an explicit notice that the example's answer key remains fixed.
 It creates no job or attempt and never sends source data to a provider. Stage changes
-move focus to the question heading; answer feedback uses a polite status region.
+move focus to the question heading; editing focuses the textarea and submission
+focuses the named feedback region inside the polite status region.
 
 Motion consists of short paper/type arrivals, one-time section entrances and
 immediate control feedback. Content is visible by default; an unavailable observer
@@ -278,6 +283,10 @@ bank section into a wide selection spread. The final refinement strengthened mut
 text on light paper, consolidated the editorial type scale and replaced typographic
 checkmarks with the same restrained vector selection marks used by the UI language.
 
-Verification evidence and the final visual critique are recorded under the ignored
-`.taste-skill/landing/` folder. Public-page snapshots are captured at 1440, 768 and
-390px; interaction/reflow checks also cover 320, 601 and 1024px.
+Stage 6.5C Milestone 2 consolidates landing CSS into one base and one set of rules
+per breakpoint (1100, 900, 600 and 360px). Removed static specimens have no remaining
+style blocks. Font preloading and fixed navigation are retained; no offscreen
+containment, motion dependency, stock photography or external media is added.
+Two visual passes and production interaction checks cover 1440, 1024, 768, 390 and
+320px. Evidence is recorded in `.taste-skill/milestone2/`; the report is
+`docs/landing-milestone-2.md`. Earlier verification remains in `.taste-skill/landing/`.

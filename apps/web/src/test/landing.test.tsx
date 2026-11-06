@@ -37,9 +37,16 @@ describe('public landing page', () => {
     expect(
       screen.getAllByRole('link', { name: /Create your account/ })[0],
     ).toHaveAttribute('href', '/register');
+    expect(screen.getByRole('link', { name: /Create a lecturer account/ }))
+      .toHaveAttribute('href', '/register?role=LECTURER');
     expect(
       screen.queryByText('Opening your workspace…'),
     ).not.toBeInTheDocument();
+    const hero = document.querySelector('.lp-hero')!;
+    expect(within(hero as HTMLElement).getByRole('button', { name: /Try this question/ })).toBeInTheDocument();
+    expect(document.querySelectorAll('.lp-demo')).toHaveLength(1);
+    expect(document.getElementById('banks')!.compareDocumentPosition(document.getElementById('practice')!))
+      .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it('keeps the local demo usable when the API is unavailable, without generation or attempt requests', async () => {
@@ -56,6 +63,7 @@ describe('public landing page', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /Try this question/ }));
     expect(screen.getByRole('button', { name: /Check answer/ })).toBeDisabled();
+    expect(screen.getByRole('heading', { level: 2, name: 'What do you think?' })).toBeInTheDocument();
     await user.click(screen.getByRole('radio', { name: 'Sorted input' }));
     await user.click(screen.getByRole('button', { name: /Check answer/ }));
     expect(screen.getByRole('status')).toHaveTextContent(
@@ -166,9 +174,11 @@ describe('prepared question demonstration', () => {
     });
     await user.click(source);
     expect(source).toHaveAttribute('aria-expanded', 'true');
+    expect(source).toHaveAttribute('aria-controls', 'sample-evidence');
     expect(screen.getByText(`“${sample.quote}”`)).toBeVisible();
     await user.click(screen.getByRole('button', { name: /Edit wording/ }));
     const field = screen.getByRole('textbox', { name: /Question wording/ });
+    expect(field).toHaveFocus();
     await user.clear(field);
     expect(
       screen.getByRole('button', { name: /Try this question/ }),
@@ -196,6 +206,7 @@ describe('prepared question demonstration', () => {
       'The key is sorted input.',
     );
     expect(screen.getByRole('status')).toHaveTextContent(sample.explanation);
+    expect(screen.getByLabelText('Sample answer feedback')).toHaveFocus();
     expect(screen.getByRole('radio', { name: /Sorted input/ })).toBeDisabled();
     await user.click(
       screen.getByRole('button', { name: /Back to question review/ }),

@@ -21,6 +21,23 @@ function open(path: string) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('account interface', () => {
+  it.each([
+    ['?role=LECTURER', 'Lecturer'],
+    ['?role=STUDENT', 'Student'],
+    ['?role=ADMIN', 'Student'],
+    ['?role=lecturer', 'Student'],
+    ['?role=LECTURER&role=STUDENT', 'Student'],
+    ['', 'Student'],
+  ])('uses only an exact single registration role hint: %s', async (hint, selected) => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(unauthorized())));
+    open(`/register${hint}`);
+    expect(await screen.findByRole('radio', { name: selected })).toBeChecked();
+    const other = selected === 'Student' ? 'Lecturer' : 'Student';
+    await userEvent.click(screen.getByRole('radio', { name: other }));
+    expect(screen.getByRole('radio', { name: other })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /at least 18/ })).not.toBeChecked();
+  });
+
   it('redirects unauthenticated users to an accessible sign-in form', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(unauthorized())));
     open('/dashboard');

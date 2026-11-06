@@ -13,7 +13,13 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   const session = useSession();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [role, setRole] = useState<'STUDENT' | 'LECTURER'>('STUDENT');
+  // A single exact hint sets the initial choice only; the submitted form and
+  // server validation remain authoritative. Never derive permissions from it.
+  const [role, setRole] = useState<'STUDENT' | 'LECTURER'>(() => {
+    const hints = new URLSearchParams(location.search).getAll('role');
+    return register && hints.length === 1 && hints[0] === 'LECTURER'
+      ? 'LECTURER' : 'STUDENT';
+  });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [showPassword, setShowPassword] = useState(false);

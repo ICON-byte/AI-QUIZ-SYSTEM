@@ -1045,3 +1045,13 @@ grading, held answer review, PDF/DOCX/TXT generation recovery, bank acceptance,
 challenge invitations, resumption, manual/scheduled closure and private rankings.
 All three quiz modes were exercised against a disposable PostgreSQL cluster;
 no live Gemini requests or developer-database resets were used.
+
+Stage 6.5C Milestone 1 adds an HTML font preload, an editable lecturer registration
+hint and keyboard-focus corrections to the local demo. Performance methodology,
+before/after measurements and limitations are recorded in
+[the Milestone 1 report](docs/landing-milestone-1.md).
+
+Milestone 2 integrates the working sample into the hero, brings the mobile question
+forward, and follows its reuse through a private bank, practice, assessments and
+challenges. See [the visual refinement report](docs/landing-milestone-2.md) for
+screenshots, performance measurements, verification and remaining limitations.
