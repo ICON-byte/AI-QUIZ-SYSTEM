@@ -20,7 +20,7 @@ async function main() {
     void engine.expire().catch(() => console.error('Attempt expiry sweep failed; it will retry.')).finally(() => { expiring = false; });
   }, 15_000);
   expiryTimer.unref();
-  const server = app.listen(config.PORT, '127.0.0.1', () => console.log(`API listening on http://127.0.0.1:${config.PORT}`));
+  const server = app.listen(config.PORT, config.HOST, () => console.log(`API listening on http://${config.HOST}:${config.PORT}`));
   let closing = false;
   function shutdown() {
     if (closing) return;

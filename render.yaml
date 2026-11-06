@@ -1,0 +1,32 @@
+# Preparation only: resource creation and the first deployment require approval.
+services:
+  - type: web
+    name: ai-quiz-system-api
+    runtime: node
+    plan: free
+    autoDeployTrigger: "off"
+    buildCommand: npm ci --include=dev && npm run build -w @quiz/api
+    startCommand: npm run start -w @quiz/api
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      # Conservative until the actual Vercel -> Render proxy chain is verified.
+      - key: TRUST_PROXY_HOPS
+        value: "0"
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_ORIGIN
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CHALLENGE_INVITE_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        sync: false

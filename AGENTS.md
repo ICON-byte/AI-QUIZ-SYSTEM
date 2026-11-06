@@ -147,9 +147,14 @@
 - Acceptance reuses bank validation/ownership/capacity inside one transaction and
   stores an idempotent receipt on the job. Adding reviewed questions to a quiz uses
   its existing draft flow. Never modify published questions or the grading engine.
-- Hosting needs an always-on Node process supporting child processes, adequate RAM,
-  and PostgreSQL. Start the worker in server lifecycle; graceful shutdown aborts
-  active calls. No Redis, microservice, provider lock-in or serverless assumptions.
+- Stage 7 deployment uses free Vercel, free Render and a dedicated free Supabase
+  PostgreSQL project. Render may sleep: worker cleanup/sweeps resume on wake;
+  request-time deadlines still apply. Do not replay abandoned RUNNING AI jobs.
+  Physical retention cleanup is delayed while asleep; document that limitation.
+  Keep the worker in the Node server lifecycle with child-process support and
+  graceful abort. No paid services, keep-alive services, Redis or extra scheduler.
+  See docs/deployment.md. Resource creation, production migrations and deployment
+  each require approval; never stage the unrelated Account.tsx modification.
 
 ## Frontend conventions
 

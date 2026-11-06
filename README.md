@@ -85,6 +85,17 @@ refuses official assessment eligibility.
 An authorized operator with shell and application database access runs:
 
 ```powershell
+npm run lecturer:pending
+```
+
+This read-only command prints active lecturers with `PENDING` verification, one
+email per line, sorted alphabetically. Approved, rejected, disabled and student
+accounts are excluded. It uses the API's configured database; keep its terminal
+output private. From `apps/api`, the same command works directly.
+
+Copy an email from that list, confirm the lecturer's identity, then run:
+
+```powershell
 npm run lecturer:verify -- --email lecturer@example.edu --actor institution-operator --decision approve --reason "Confirmed appointment against the staff directory"
 ```
 
@@ -687,15 +698,15 @@ layer. A short request limiter also bounds creation/extraction attempts.
 
 ### Hosting and testing
 
-Use an **always-on Node 24 process** with PostgreSQL, child-process support and
-sufficient memory for bounded parsing. The worker runs within the API, polls every
-two seconds, and aborts its active call during graceful shutdown. No hosting vendor,
-Redis, separate microservice or persistent file volume is required. Sleeping or
-serverless runtimes are not supported by this execution model without a future
-worker arrangement. Keep proxy body/time limits consistent with uploads and the
-extraction timeout. Pending jobs can expire during prolonged downtime; stale work
-fails without resending source material. Retention cleanup requires the API worker
-to be running; on-read expiry still denies expired data after restart.
+Stage 7 targets **Vercel Hobby, Render Free and a dedicated Supabase Free PostgreSQL
+project**. See [deployment instructions](docs/deployment.md) for configuration,
+approval gates, production lecturer verification and free-hosting limitations.
+The Node 24 API includes the worker and bounded extraction child process; no extra
+service or persistent disk is needed. While Render sleeps, background processing
+and physical retention cleanup pause. They resume after wake; abandoned AI jobs
+expire without replay, and request-time quiz deadlines still apply. Expired reviews
+remain inaccessible even when physical cleanup is delayed. Continuous background
+availability and exact deletion times are not guaranteed on this free setup.
 
 Routine tests mock Gemini and make **zero real provider requests**:
 

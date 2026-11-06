@@ -6,6 +6,11 @@ import { signAccess, verifyAccess } from '../src/modules/auth/tokens.js';
 const input = { DATABASE_URL: 'postgresql://localhost/test', JWT_SECRET: 'a'.repeat(48) };
 
 describe('configuration and validation', () => {
+  it('keeps local binding private and allows Render to bind all interfaces explicitly', () => {
+    expect(loadConfig(input).HOST).toBe('127.0.0.1');
+    expect(loadConfig({ ...input, HOST: '0.0.0.0', PORT: '10000' })).toMatchObject({ HOST: '0.0.0.0', PORT: 10000 });
+    expect(() => loadConfig({ ...input, HOST: 'https://example.com' })).toThrow('HOST');
+  });
   it('rejects placeholder secrets and avoids echoing credentials', () => {
     expect(() => loadConfig({ ...input, JWT_SECRET: 'replace-with-at-least-32-random-characters' })).toThrow('JWT_SECRET');
     expect(() => loadConfig({ ...input, DATABASE_URL: 'private-password' })).not.toThrow('private-password');
