@@ -15,7 +15,8 @@
     "db:generate": "npm run db:generate -w @quiz/api",
     "db:migrate": "npm run db:migrate -w @quiz/api",
     "db:deploy": "npm run db:deploy -w @quiz/api",
-    "lecturer:verify": "npm run lecturer:verify -w @quiz/api --"
+    "lecturer:verify": "npm run lecturer:verify -w @quiz/api --",
+    "lecturer:pending": "npm run lecturer:pending -w @quiz/api --"
   },
   "overrides": { "minimatch": "^11.0.1" },
   "devDependencies": {
