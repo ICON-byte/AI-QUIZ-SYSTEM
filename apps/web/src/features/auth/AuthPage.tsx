@@ -6,11 +6,13 @@ import { api, ApiError, type User } from '../../lib/api';
 import { sessionKey, useSession } from './session';
 import { Brand } from '../../components/Brand';
 import { Feedback, Loading } from '../../components/Feedback';
+import { useInitialPageLoading } from '../../lib/pageLoading';
 
 export function AuthPage({ register = false }: { register?: boolean }) {
   const location=useLocation();
   const returnTo=invitationReturn((location.state as {returnTo?:unknown}|null)?.returnTo);
   const session = useSession();
+  const pageLoading = useInitialPageLoading(session.isPending);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   // A single exact hint sets the initial choice only; the submitted form and
@@ -24,7 +26,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   const [error, setError] = useState<ApiError | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  if (session.isPending) return <Loading />;
+  if (pageLoading) return <Loading />;
   if (session.error) return <main className="standalone"><Feedback message={session.error.message} retry={() => { void session.refetch(); }} /></main>;
   if (session.data) return <Navigate to={returnTo} replace />;
 

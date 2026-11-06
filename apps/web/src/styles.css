@@ -131,6 +131,29 @@ h3 { font-size: 14px; font-weight: 600; }
 .secondary:hover { background: #edf0ee; }
 .standalone { max-width: 650px; margin: 12vh auto; padding: 24px; }
 .standalone > * + * { margin-top: 20px; }
+.page-loading {
+  min-height: 65dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  text-align: center;
+}
+.page-loading > p { margin: 0; color: var(--muted); }
+.loading-mark { flex-shrink: 0; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.loading-mark-track { stroke: #cbd8d0; }
+.loading-mark-stroke { stroke: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .loading-mark-stroke {
+    stroke-dasharray: 24 76;
+    animation: workspace-logo-trace 1.3s linear infinite;
+  }
+}
+@keyframes workspace-logo-trace {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
 .feedback, .form-error { color: var(--negative); font-size: 13px; }
 .feedback { margin: 16px 0; }
 .feedback .button { margin-top: 12px; }

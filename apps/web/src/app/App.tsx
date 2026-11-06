@@ -3,8 +3,9 @@ import { Route, Routes } from 'react-router';
 import { AuthPage } from '../features/auth/AuthPage';
 import { LandingPage } from '../features/landing/LandingPage';
 import { Loading } from '../components/Feedback';
+import { withMinimumPageLoading } from '../lib/pageLoading';
 
-const WorkspaceRoutes = lazy(() => import('./WorkspaceRoutes'));
+const WorkspaceRoutes = lazy(() => withMinimumPageLoading(import('./WorkspaceRoutes')));
 
 export function App() {
   return (
