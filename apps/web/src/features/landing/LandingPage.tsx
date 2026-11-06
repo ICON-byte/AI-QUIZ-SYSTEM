@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link } from 'react-router';
 import { Brand } from '../../components/Brand';
 import { useSession } from '../auth/session';
@@ -7,11 +7,22 @@ import { QuizDemo } from './QuizDemo';
 import { questions, sample } from './demoContent';
 import './landing.css';
 
+const steps = [
+  { title: 'Add your notes', text: 'Your study material goes in.' },
+  { title: 'Review the drafts', text: 'AI proposes questions. You edit and approve.' },
+  { title: 'Keep the good ones', text: 'Reviewed questions join your private bank.' },
+  { title: 'Use them your way', text: 'Practise, assess or challenge friends.' },
+];
+
 export function LandingPage() {
   const session = useSession();
   const page = useRef<HTMLDivElement>(null);
+  const tilted = useRef<HTMLElement | null>(null);
+  const canTilt = useRef(false);
+  const [scrolled, setScrolled] = useState(false);
   const signedIn = !!session.data;
   const destination = signedIn ? '/dashboard' : '/register';
+
   useEffect(() => {
     const previous = document.title;
     document.title = 'AI Quiz — Turn notes into questions';
@@ -37,21 +48,67 @@ export function LandingPage() {
     };
   }, []);
 
+  // Header turns to glass once the page moves.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Paper sheets tilt toward a mouse pointer; off for touch and reduced motion.
+  useEffect(() => {
+    canTilt.current =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia(
+        '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)',
+      ).matches;
+  }, []);
+
+  const resetTilt = () => {
+    const element = tilted.current;
+    if (!element) return;
+    element.style.removeProperty('--rx');
+    element.style.removeProperty('--ry');
+    tilted.current = null;
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!canTilt.current || event.pointerType !== 'mouse') return;
+    const element = (event.target as HTMLElement).closest<HTMLElement>('[data-tilt]');
+    if (element !== tilted.current) resetTilt();
+    if (!element) return;
+    const box = element.getBoundingClientRect();
+    const x = (event.clientX - box.left) / box.width - 0.5;
+    const y = (event.clientY - box.top) / box.height - 0.5;
+    element.style.setProperty('--ry', `${(x * 6).toFixed(2)}deg`);
+    element.style.setProperty('--rx', `${(-y * 5).toFixed(2)}deg`);
+    tilted.current = element;
+  };
+
   return (
-    <div className="landing" ref={page} id="top">
+    <div
+      className="landing"
+      ref={page}
+      id="top"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={resetTilt}
+    >
       <a className="lp-skip" href="#landing-main">
         Skip to content
       </a>
-      <div className="lp-header-frame">
+      <div className="lp-rules" aria-hidden="true" />
+      <div className={`lp-header-frame${scrolled ? ' is-scrolled' : ''}`}>
         <div className="lp-shell">
           <LandingNavigation signedIn={signedIn} />
         </div>
+        <span className="lp-progress" aria-hidden="true" />
       </div>
       <main id="landing-main" tabIndex={-1}>
         <section className="lp-hero lp-shell" aria-labelledby="hero-title">
           <div className="lp-hero-heading">
             <h1 id="hero-title">
-              Turn notes{' '}
+              Turn <mark className="lp-marker">notes</mark>{' '}
               <br />
               into questions.
             </h1>
@@ -76,11 +133,34 @@ export function LandingPage() {
             role="region"
             aria-label="Review and try a prepared question"
           >
+            <p className="lp-annotation" aria-hidden="true">
+              Highlights show where each question came from.
+              <svg viewBox="0 0 56 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path pathLength={1} d="M6 4C30 2 50 14 46 40M38 33l8 9 6-11" />
+              </svg>
+            </p>
             <QuizDemo />
           </div>
           <div className="lp-demo-caption">
             <p>Authored sample: inspect, edit and answer here. Nothing is saved.</p>
           </div>
+        </section>
+
+        <section className="lp-flow-section lp-shell" aria-labelledby="flow-title">
+          <h2 className="lp-visually-hidden" id="flow-title">
+            How it works
+          </h2>
+          <ol className="lp-flow" data-reveal>
+            {steps.map((step, index) => (
+              <li key={step.title}>
+                <span className="lp-flow-index" aria-hidden="true">
+                  {index + 1}
+                </span>
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+              </li>
+            ))}
+          </ol>
         </section>
 
         <section
@@ -90,7 +170,7 @@ export function LandingPage() {
           aria-labelledby="bank-title"
         >
           <div className="lp-bank-layout">
-            <div data-reveal>
+            <div>
               <h2 id="bank-title">
                 Questions
                 <br />
@@ -104,29 +184,31 @@ export function LandingPage() {
               </p>
             </div>
             <figure data-reveal>
-              <div className="lp-bank-sheet" data-ui>
-                <div className="lp-document-top">
-                  <span>Your question bank</span>
-                  <span>Private · Example</span>
-                </div>
-                <h3>Search &amp; sorting</h3>
-                <div className="lp-bank-row">
-                  <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="1.7" /></svg>
-                  <div>
-                    <strong>{sample.question}</strong>
-                    <span>Algorithms · Medium</span>
+              <div className="lp-stack" data-tilt>
+                <div className="lp-bank-sheet" data-ui>
+                  <div className="lp-document-top">
+                    <span>Your question bank</span>
+                    <span>Private · Example</span>
                   </div>
-                </div>
-                <div className="lp-bank-row">
-                  <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="1.7" /></svg>
-                  <div>
-                    <strong>Which half of the interval remains?</strong>
-                    <span>Algorithms · Medium</span>
+                  <h3>Search &amp; sorting</h3>
+                  <div className="lp-bank-row">
+                    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="1.7" /></svg>
+                    <div>
+                      <strong>{sample.question}</strong>
+                      <span>Algorithms · Medium</span>
+                    </div>
                   </div>
+                  <div className="lp-bank-row">
+                    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="1.7" /></svg>
+                    <div>
+                      <strong>Which half of the interval remains?</strong>
+                      <span>Algorithms · Medium</span>
+                    </div>
+                  </div>
+                  <p className="lp-bank-selection">
+                    Two reviewed questions. Three ways to use them.
+                  </p>
                 </div>
-                <p className="lp-bank-selection">
-                  Two reviewed questions. Three ways to use them.
-                </p>
               </div>
               <figcaption>
                 Illustrative private bank · edits never change published quizzes.
@@ -156,7 +238,7 @@ export function LandingPage() {
           aria-labelledby="practice-title"
         >
           <div className="lp-shell lp-practice-layout">
-            <div className="lp-practice-copy" data-reveal>
+            <div className="lp-practice-copy">
               <h2 id="practice-title">
                 Make the next
                 <br />
@@ -176,15 +258,17 @@ export function LandingPage() {
               </Link>
             </div>
             <figure className="lp-practice-example" data-reveal>
-              <div className="lp-result-sheet" data-ui>
+              <div className="lp-result-sheet" data-ui data-tilt>
                 <div className="lp-document-top">
                   <span>Personal practice</span>
                   <span>Sample result</span>
                 </div>
                 <div className="lp-result-score">
-                  <strong>
-                    4<span>/ 5</span>
-                  </strong>
+                  <div className="lp-ring">
+                    <strong>
+                      4<span>/ 5</span>
+                    </strong>
+                  </div>
                   <p>
                     One question
                     <br />
@@ -214,7 +298,7 @@ export function LandingPage() {
           tabIndex={-1}
           aria-labelledby="teaching-title"
         >
-          <div className="lp-section-heading" data-reveal>
+          <div className="lp-section-heading">
             <h2 id="teaching-title">
               Prepared for
               <br />
@@ -231,7 +315,7 @@ export function LandingPage() {
             </div>
           </div>
           <div className="lp-teaching-layout">
-            <div className="lp-teaching-notes" data-reveal>
+            <div className="lp-teaching-notes">
               <div>
                 <h3>Set the conditions.</h3>
                 <p>
@@ -255,10 +339,10 @@ export function LandingPage() {
               </Link>
             </div>
             <figure className="lp-assessment-example" data-reveal>
-              <div className="lp-assessment-sheet" data-ui>
+              <div className="lp-assessment-sheet" data-ui data-tilt>
                 <div className="lp-document-top">
                   <span>CSC 201 · Sample course</span>
-                  <span>Published</span>
+                  <span className="lp-pill">Published</span>
                 </div>
                 <h3>Search &amp; sorting</h3>
                 <p>Course assessment</p>
@@ -279,6 +363,13 @@ export function LandingPage() {
                 <div className="lp-assessment-schedule">
                   <span>Scheduled window</span>
                   <strong>Monday, 9:00–11:00</strong>
+                  <div className="lp-window" aria-hidden="true">
+                    <span />
+                  </div>
+                  <div className="lp-window-scale" aria-hidden="true">
+                    <span>8:00</span>
+                    <span>12:00</span>
+                  </div>
                   <p>Students enter through their enrolled course.</p>
                 </div>
                 <div className="lp-assessment-note">
@@ -303,7 +394,7 @@ export function LandingPage() {
           aria-labelledby="challenges-title"
         >
           <div className="lp-shell">
-            <div className="lp-challenge-heading" data-reveal>
+            <div className="lp-challenge-heading">
               <h2 id="challenges-title">
                 A challenge
                 <br />
@@ -322,7 +413,7 @@ export function LandingPage() {
               </div>
             </div>
             <figure className="lp-challenge-example" data-reveal>
-              <div className="lp-invitation-example" data-ui>
+              <div className="lp-invitation-example" data-ui data-tilt>
                 <span>Friends challenge · Example</span>
                 <h3>Search party</h3>
                 <p>
@@ -356,13 +447,13 @@ export function LandingPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
+                    <tr className="is-top">
                       <td>1</td>
                       <th scope="row">Ada</th>
                       <td>5 / 5</td>
                       <td>1:24</td>
                     </tr>
-                    <tr>
+                    <tr className="is-top">
                       <td>1</td>
                       <th scope="row">Tunde</th>
                       <td>5 / 5</td>
@@ -399,7 +490,7 @@ export function LandingPage() {
 
         <section className="lp-faq lp-light-field" aria-labelledby="faq-title">
           <div className="lp-shell lp-faq-layout">
-            <div data-reveal>
+            <div>
               <h2 id="faq-title">
                 Before
                 <br />
@@ -425,9 +516,9 @@ export function LandingPage() {
           className="lp-closing lp-shell"
           aria-labelledby="closing-title"
         >
-          <div data-reveal>
+          <div className="lp-closing-panel" data-reveal>
             <h2 id="closing-title">
-              Put your notes
+              Put your <mark className="lp-marker">notes</mark>
               <br />
               to work.
             </h2>
